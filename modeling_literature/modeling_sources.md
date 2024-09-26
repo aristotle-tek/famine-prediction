@@ -16,6 +16,10 @@
 
 ## FEWS NET
 
+- 2018 Guidance document, [Integrating Acute Malnutrition and Mortality into Scenario Development](https://fews.net/global/guidance-documents/january-2018-0)
+
+- 2021 Guidance document,[Matrix Analysis: Integrated Analysis of Survey-Based Indicators for Classification of Acute Food Insecurity](https://fews.net/global/guidance-documents/may-2021)
+
 ###  tools
 - [Crop Monitoring for Early Warning (CM4EW)](https://www.cropmonitor.org/crop-monitor-for-early-warning) A multiagency effort that assesses crop growing conditions for countries at risk of food insecurity.
 - [FEWS NET Land Data Assimilation System (FLDAS)](https://ldas.gsfc.nasa.gov/FLDAS/) A modeling framework that integrates satellite rainfall estimates, meteorological reanalysis, and other data sources to predict hydrologic conditions.
@@ -133,6 +137,34 @@ Maxwell. 2019. [Famine Early Warning and Information Systems in Conflict Setting
 "The existing information mechanisms on food insecurity are not ‘conflict sensitive’, that is, they do not sufficiently incorporate the causal relation between conflict and hunger. This generates a lack of detailed information in this respect, which hinders implementation of Security Council Resolution 2417."
 
 
+
+
+
+---
+
+### The biology of human starvation: some new insights
+C. J. K. Henry 2001.
+Nutrition Bulletin, 26, 205–211
+
+Human survival statistics based on BMI, meta-review. 
+<!-- BMI below 13 in males and 11 in females may be the lowest limit compatible with life. -->
+
+---
+
+### BMI and all cause mortality: systematic review and non-linear dose-response meta-analysis of 230 cohort studies with 3.74 million deaths among 30.3 million participants
+
+Aune D, Sen A, Prasad M, Norat T, Janszky I, Tonstad S, Romundstad P, Vatten LJ. BMJ. 2016 May 4;353:i2156. doi: 10.1136/bmj.i2156. PMID: 27146380; PMCID: PMC4856854.
+
+<!-- bibtex-key: aune2016bmi -->
+---
+
+## Other code repositories
+
+The only repository I could find with more than two stars is this:
+[Machine learning for food security: Principles for transparency and usability](https://github.com/zhou100/FoodSecurityPrediction)
+
+- See [search results based on 'famine prediction'](https://github.com/search?q=famine%20prediction&type=repositories)
+
 ---
 ## Case studies
 
@@ -143,16 +175,13 @@ Maxwell. 2019. [Famine Early Warning and Information Systems in Conflict Setting
 
 <!-- Tiia-Maria Pasanen, Miikka Voutilainen, Jouni Helske, Harri Högmander, A Bayesian Spatio-Temporal Analysis of Markets During the Finnish 1860s Famine, Journal of the Royal Statistical Society Series C: Applied Statistics, Volume 71, Issue 5, November 2022, Pages 1282–1302, https://doi.org/10.1111/rssc.12577 -->
 
+- Alex de Waal. Mass starvation: The history and future of famine. John Wiley & Sons, 2017.
+<!-- bibtex-key: dewaal2017mass -->
+
+- Alex de Waal. Famine that Kills: Darfur, Sudan.
+<!-- bibtex-key:dewaal2005famine -->
 
 
 
----
-
-## Other code repositories
-
-The only repository I could find with more than two stars is this:
-[Machine learning for food security: Principles for transparency and usability](https://github.com/zhou100/FoodSecurityPrediction)
-
-- See [search results based on 'famine prediction'](https://github.com/search?q=famine%20prediction&type=repositories)
 
 
