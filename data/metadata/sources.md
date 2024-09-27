@@ -93,3 +93,15 @@ Periodicity: Annual
 Statistical Concept and Methodology: Population estimates are usually based on national population censuses, and estimates of fertility, mortality and migration. Errors and undercounting in census occur even in high-income countries. In developing countries errors may be substantial because of limits in the transport, communications, and other resources required to conduct and analyze a full census. The quality and reliability of official demographic data are also affected by public trust in the government, government commitment to full and accurate enumeration, confidentiality and protection against misuse of census data, and census agencies' independence from political influence. Moreover, comparability of population indicators is limited by differences in the concepts, definitions, collection procedures, and estimation methods used by national statistical agencies and other organizations that collect the data. The currentness of a census and the availability of complementary data from surveys or registration systems are objective ways to judge demographic data quality. Some European countries' registration systems offer complete information on population in the absence of a census. The United Nations Statistics Division monitors the completeness of vital registration systems. Some developing countries have made progress over the last 60 years, but others still have deficiencies in civil registration systems. International migration is the only other factor besides birth and death rates that directly determines a country's population change. Estimating migration is difficult. At any time many people are located outside their home country as tourists, workers, or refugees or for other reasons. Standards for the duration and purpose of international moves that qualify as migration vary, and estimates require information on flows into and out of countries that is difficult to collect. Population projections, starting from a base year are projected forward using assumptions of mortality, fertility, and migration by age and sex through 2050, based on the UN Population Division's World Population Prospects database medium variant.
 Topic: Health: Population: Structure
  -->
+
+
+
+
+ ---
+
+ this is too specific - protein malnutrition problems ---
+### Protein Energy Malnutrition](https://www.childrenscolorado.org/globalassets/healthcare-professionals/clinical-pathways/protein-energy-malnutrition.pdf) 
+Children's Hospital Colorado
+(a.k.a. "Failure to Thrive" which is "a stigmatizing and non-specific term")
+
+

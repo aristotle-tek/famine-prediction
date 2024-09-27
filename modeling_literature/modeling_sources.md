@@ -142,7 +142,7 @@ Maxwell. 2019. [Famine Early Warning and Information Systems in Conflict Setting
 
 ---
 
-### The biology of human starvation: some new insights
+### [The biology of human starvation: some new insights](https://onlinelibrary.wiley.com/doi/abs/10.1046/j.1467-3010.2001.00164.x)
 C. J. K. Henry 2001.
 Nutrition Bulletin, 26, 205–211
 
@@ -151,12 +151,36 @@ Human survival statistics based on BMI, meta-review.
 
 ---
 
-### BMI and all cause mortality: systematic review and non-linear dose-response meta-analysis of 230 cohort studies with 3.74 million deaths among 30.3 million participants
+### [BMI and all cause mortality](https://www.bmj.com/content/353/bmj.i2156.long): systematic review and non-linear dose-response meta-analysis of 230 cohort studies with 3.74 million deaths among 30.3 million participants
 
 Aune D, Sen A, Prasad M, Norat T, Janszky I, Tonstad S, Romundstad P, Vatten LJ. BMJ. 2016 May 4;353:i2156. doi: 10.1136/bmj.i2156. PMID: 27146380; PMCID: PMC4856854.
 
 <!-- bibtex-key: aune2016bmi -->
 ---
+
+### [Estimated Mean per Capita Energy Requirements for Planning Emergency Food Aid Rations](https://pubmed.ncbi.nlm.nih.gov/25101437/)
+
+Institute of Medicine (US) Committee on International Nutrition. Edited by Lindsay H. Allen et. al., National Academies Press (US), 1995. doi:10.17226/9095
+
+
+or [here](https://nap.nationalacademies.org/catalog/9095/estimated-mean-per-capita-energy-requirements-for-planning-emergency-food-aid-rations)
+
+
+---
+### [Human energy requirements](https://openknowledge.fao.org/server/api/core/bitstreams/62ae7aeb-9536-4e43-b2d0-55120e662824/content)
+
+Joint FAO/WHO/UNU Expert Consultation
+Rome, 17–24 October 2001
+
+
+---
+### [Energy requirements of children and adolescents](https://www.cambridge.org/core/journals/public-health-nutrition/article/energy-requirements-of-children-and-adolescents/613ED920234C6440B19408B79A1ECF9A)
+
+Torun B. Energy requirements of children and adolescents. Public Health Nutrition. 2005;8(7a):968-993. doi:10.1079/PHN2005791
+
+
+---
+
 
 ## Other code repositories
 
