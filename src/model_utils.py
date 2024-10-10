@@ -1,5 +1,6 @@
 import math
 import numpy as np
+import pandas as pd
 import warnings
 
 
@@ -28,11 +29,13 @@ def calculate_energy_deficit(cereal_intake, bmi, energy_requirements, percent_gr
         float: The energy deficit (positive for deficit, negative for surplus) as a fraction of the energy requirement.
     """
     # Input validation
-    if not isinstance(cereal_intake, (int, float)) or cereal_intake <= 0:
+    if not isinstance(cereal_intake, (int, float, np.int64, np.float64)) or cereal_intake <= 0:
         raise ValueError("Cereal intake must be a positive number.")
 
-    if not (10 <= bmi <= 60):
-        raise ValueError("BMI should be in the range of 10 to 60.")
+    if not (bmi <= 60):
+        raise ValueError("BMI should not exceed 60.")
+    #if not (10 <= bmi <= 60):
+    #    raise ValueError("BMI should be in the range of 10 to 60.")
 
     if bmi < 15 or bmi > 30:
         warnings.warn("Warning: extreme values of BMI (<15 or >30).")
@@ -68,13 +71,14 @@ def calculate_energy_deficit(cereal_intake, bmi, energy_requirements, percent_gr
 
 
 
-def update_bmi(deficit, bmi_prev, factor_deficit=0.096, recovery_factor=3.52):
+def update_bmi(deficit, bmi_prev, recovery=False, factor_deficit=0.096, recovery_factor=3.52):
     """
     Calculate the updated BMI based on energy deficit/surplus and previous BMI.
 
     Args:
         deficit (float): Energy deficit (positive for deficit, negative for surplus) as a fraction of the energy requirement.
         bmi_prev (float): The BMI of the previous month.
+        recovery (bool): whether in recovery
         factor_deficit (float): Coefficient for BMI adjustment during deficit (default is 0.096).
         recovery_factor (float): Coefficient for BMI adjustment during recovery (default is 3.52).
 
@@ -85,25 +89,28 @@ def update_bmi(deficit, bmi_prev, factor_deficit=0.096, recovery_factor=3.52):
     if not isinstance(deficit, (int, float)):
         raise ValueError("Deficit must be a number.")
 
-    if not (10 <= bmi_prev <= 60):
-        raise ValueError("The previous BMI should be in the range of 10 to 60.")
+    # if not (10 <= bmi_prev <= 60):
+    #     raise ValueError("The previous BMI should be in the range of 10 to 60.")
+    if not (bmi_prev <= 60):
+        raise ValueError("The previous BMI should not exceed 60.")
+
 
     if factor_deficit <= 0 or recovery_factor <= 0:
         raise ValueError("Factors should be positive numbers.")
 
     # Adjust BMI based on deficit or surplus
-    if deficit >= 0:
-        # Deficit case
-        factor = factor_deficit
-        delta_bmi = - (3.0 * deficit) - (factor * (22 - bmi_prev))
-    else:
+    if recovery:
         # Recovery (surplus) case
         factor = recovery_factor
-        delta_bmi = - (3.0 * deficit) + (factor * (22 - bmi_prev))
+        delta_bmi = (3.0 * deficit) - (factor * (22 - bmi_prev))
         # Cap the BMI increase at 1 unit
         delta_bmi = min(delta_bmi, 1.0)
+    else:
+        # Deficit case
+        factor = factor_deficit
+        delta_bmi = (3.0 * deficit) - (factor * (22 - bmi_prev))
 
-    bmi_new = bmi_prev + delta_bmi
+    bmi_new = bmi_prev - delta_bmi
 
     return bmi_new
 
@@ -127,14 +134,187 @@ def calculate_excess_mortality(BMIt_minus_1):
 
     """
     if BMIt_minus_1 >= 18.5:
-        return 0
+        return 0.0
     else:
         excess_mortality = 0.00023 * math.exp((18.5 - BMIt_minus_1) ** 1.36)
-        return excess_mortality
+        # mortality = percent, so don't return higher than 1.0:
+        return min(excess_mortality, 1.0)
 
 
 
-# Example usage
+class CalorieDistributor:
+    def __init__(self, pop_per_percentile, total_kcal_consumption, kcal_min=500, kcal_max=1540, epsilon=0.001):
+        """
+        Initializes the CalorieDistributor with population data and constraints.
+
+        Parameters:
+        - pop_per_percentile: list or numpy array of populations for each percentile group (length 100)
+        - total_kcal_consumption: total number of calories to be distributed
+        - kcal_min: minimum allowable caloric intake per individual
+        - kcal_max: maximum allowable caloric intake per individual
+        - epsilon: allowable margin of error for total caloric consumption (as a fraction, e.g., 0.001 for 0.1%)
+        """
+        self.pop_per_percentile = np.array(pop_per_percentile)
+        self.total_kcal_consumption = total_kcal_consumption
+        self.kcal_min = kcal_min
+        self.kcal_max = kcal_max
+        self.epsilon = epsilon
+        self.percentiles = np.arange(1, 101)  # Percentile indices from 1 to 100
+
+    def linear_distribution(self, beta1):
+        """
+        Distributes calories linearly across percentiles based on the given slope beta1.
+        (ie. treat percentiles as the x and average caloric consumption as the y, 
+        then we have $y= beta0 + beta1 * x$ and 
+        $\\int_x=1^x=100 ( \beta_0 + \beta1 * x) = total_kcal_consumption $$)
+
+        Parameters:
+        - beta1: slope of the linear distribution (the rate at which calories increase per percentile)
+
+        Returns:
+        - numpy array of average caloric intake per individual for each percentile group
+        """
+        pop = self.pop_per_percentile
+        x = self.percentiles  # x_i from 1 to 100
+        S = np.sum(pop)
+        S_x = np.sum(x * pop)
+
+        # Calculate beta0 based on the total kcal consumption constraint
+        beta0 = (self.total_kcal_consumption - beta1 * S_x) / S
+
+        # Enforce constraints on beta0 to ensure y_i are within kcal_min and kcal_max
+
+        beta0_min = self.kcal_min - beta1 * 1
+        beta0_max = self.kcal_max - beta1 * 100
+
+        # ? Consider other behavior here, e.g. assert ??
+        if beta0 < beta0_min:
+            beta0 = beta0_min
+            warnings.warn("beta0 adjusted to beta0_min to satisfy kcal_min constraint.")
+        elif beta0 > beta0_max:
+            beta0 = beta0_max
+            warnings.warn("beta0 adjusted to beta0_max to satisfy kcal_max constraint.")
+
+        # Calculate the average caloric intake per percentile
+        y = beta0 + beta1 * x
+
+        # Enforce kcal_min and kcal_max
+        y = np.clip(y, self.kcal_min, self.kcal_max)
+
+        # Recompute total kcal consumption with adjusted y
+        total_kcal = np.sum(y * pop)
+
+        # Check if the total kcal matches the target within the allowable epsilon
+        if abs(total_kcal - self.total_kcal_consumption) > self.epsilon * self.total_kcal_consumption:
+            warnings.warn("Total kcal consumption does not match within epsilon after adjusting beta0.")
+
+        return y
+
+    def piecewise_linear_distribution(self, beta1, c):
+        """
+        Distributes calories across percentiles using a piecewise linear function.
+        The function is initially increasing (with slope beta1), then flat.
+
+        Parameters:
+        - beta1: slope of the linear segment (the rate at which calories increase per percentile)
+        - c: the percentile at which the distribution becomes flat
+
+        Returns:
+        - numpy array of average caloric intake per individual for each percentile group
+        """
+        pop = self.pop_per_percentile
+        x = self.percentiles  # x_i from 1 to 100
+
+        # Separate indices for the two segments
+        idx1 = x <= c
+        idx2 = x > c
+
+        S = np.sum(pop)
+        T = np.sum((c - x[idx1]) * pop[idx1])
+
+        # Calculate y_c based on the total kcal consumption constraint
+        y_c = (self.total_kcal_consumption + beta1 * T) / S
+
+        # Ensure y_c is within kcal_min and kcal_max
+        if y_c > self.kcal_max:
+            y_c = self.kcal_max
+            warnings.warn("y_c adjusted to kcal_max to satisfy kcal_max constraint.")
+        elif y_c < self.kcal_min:
+            y_c = self.kcal_min
+            warnings.warn("y_c adjusted to kcal_min to satisfy kcal_min constraint.")
+
+        # Ensure that the minimum y_i is not below kcal_min
+        y_min = y_c - beta1 * (c - np.min(x[idx1]))
+        if y_min < self.kcal_min:
+            beta1 = (y_c - self.kcal_min) / (c - np.min(x[idx1]))
+            warnings.warn("beta1 adjusted to satisfy kcal_min constraint at the lowest percentile.")
+
+        # Recalculate T with the adjusted beta1
+        T = np.sum((c - x[idx1]) * pop[idx1])
+        y_c = (self.total_kcal_consumption + beta1 * T) / S
+
+        # Calculate the average caloric intake per percentile
+        y = np.zeros_like(x, dtype=float)
+        y[idx1] = y_c - beta1 * (c - x[idx1])
+        y[idx2] = y_c
+
+        # Enforce kcal_min and kcal_max
+        y = np.clip(y, self.kcal_min, self.kcal_max)
+
+        # Recompute total kcal consumption with adjusted y
+        total_kcal = np.sum(y * pop)
+
+        # Check if the total kcal matches the target within the allowable epsilon
+        if abs(total_kcal - self.total_kcal_consumption) > self.epsilon * self.total_kcal_consumption:
+            warnings.warn("Total kcal consumption does not match within epsilon after adjustments.")
+
+        return y
+
+
+
+
+class BMIDistribution:
+    def __init__(self, method='linear', top_bmi=30, data_file=None):
+        self.percentiles = np.arange(1, 101)
+        self.bmi_init = None
+        
+        if method == 'linear':
+            self.bmi_init = self._assign_initial_bmi_linear(top_bmi)
+        elif method == 'reference':
+            if data_file is None:
+                raise ValueError("A data file must be provided for the 'reference' method.")
+            self.bmi_init = self._assign_initial_bmi_reference(data_file)
+        else:
+            raise ValueError("Invalid method. Choose either 'linear' or 'reference'.")
+
+    def _assign_initial_bmi_linear(self, top_bmi):
+        return [top_bmi - ((percentile - 1) * (12 / 99)) for percentile in self.percentiles]
+
+    def _assign_initial_bmi_reference(self, data_file):
+        dfbmi = pd.read_excel(data_file, sheet_name="energy_intake_dist")
+        bmi_init = dfbmi[dfbmi.data == "bmi_init"].values
+        return bmi_init[0][1:]
+
+    def get_bmi_distribution(self):
+        return self.bmi_init
+
+
+
+def get_months_and_days(start_year, start_month, num_months):
+    # returns tuple of month, with # days
+    months_and_days = []
+    current_date = pd.to_datetime(f'{start_year}-{start_month}-01')
+
+    for _ in range(num_months):
+        month_str = current_date# .strftime('%b-%y')
+        days_in_month = current_date.days_in_month
+        months_and_days.append((month_str, days_in_month))
+        current_date = current_date + pd.DateOffset(months=1)
+
+    return months_and_days
+
+
+# Example usage (partial)
 if __name__ == "__main__":
     # Example 1: Deficit scenario
     cereal_intake = 1400  # kcal
@@ -174,3 +354,5 @@ if __name__ == "__main__":
     print(f"Previous BMI: {bmi_prev}")
     print(f"Updated BMI: {bmi_new:.2f}")
     print(f"Excess mortality: {mortality:.2f}")
+
+

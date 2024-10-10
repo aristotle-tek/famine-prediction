@@ -20,6 +20,11 @@
 
 - 2021 Guidance document,[Matrix Analysis: Integrated Analysis of Survey-Based Indicators for Classification of Acute Food Insecurity](https://fews.net/global/guidance-documents/may-2021)
 
+- book: [Famine early warning systems and remote sensing data](https://link.springer.com/book/10.1007/978-3-540-75369-8). Brown, Molly E. Springer 2008.
+<!-- bibtex=brown2008famine -->
+"This book describes the interdisciplinary work of USAID’s Famine Early Warning System Network (FEWS NET) and its influence on how food security crises are identified, documented and the kind of responses that result."
+
+
 ###  tools
 - [Crop Monitoring for Early Warning (CM4EW)](https://www.cropmonitor.org/crop-monitor-for-early-warning) A multiagency effort that assesses crop growing conditions for countries at risk of food insecurity.
 - [FEWS NET Land Data Assimilation System (FLDAS)](https://ldas.gsfc.nasa.gov/FLDAS/) A modeling framework that integrates satellite rainfall estimates, meteorological reanalysis, and other data sources to predict hydrologic conditions.
@@ -172,11 +177,57 @@ or [here](https://nap.nationalacademies.org/catalog/9095/estimated-mean-per-capi
 Joint FAO/WHO/UNU Expert Consultation
 Rome, 17–24 October 2001
 
+---
+
+### [Handbook of famine, starvation, and nutrient deprivation](https://link.springer.com/referencework/10.1007/978-3-319-40007-5)
+Preedy, Victor R., and Vinood B. Patel. Handbook of famine, starvation, and nutrient deprivation: From biology to policy. Springer, 2019.
+<!-- bibtex=preedy2019handbook -->
 
 ---
 ### [Energy requirements of children and adolescents](https://www.cambridge.org/core/journals/public-health-nutrition/article/energy-requirements-of-children-and-adolescents/613ED920234C6440B19408B79A1ECF9A)
 
 Torun B. Energy requirements of children and adolescents. Public Health Nutrition. 2005;8(7a):968-993. doi:10.1079/PHN2005791
+
+
+---
+### A mathematical model of weight change with adaptation
+Thomas, Diana M., et al. "A mathematical model of weight change with adaptation." Mathematical biosciences and engineering: MBE 6.4 (2009): 873.
+
+<!-- bibkey=thomas2009mathematical -->
+
+
+
+Linearized energy balance equation
+
+---
+### Estimating changes in free-living energy intake and its confidence interval
+
+Hall, Kevin D., and Carson C. Chow. "." The American journal of clinical nutrition 94.1 (2011): 66-74.
+
+<!-- -  Linearized energy balance equation -->
+
+<!-- bibkey=hall2011estimating -->
+
+
+
+
+---
+### Body mass index - A measure of chronic energy deficiency in adults
+
+
+[html version online](https://www.fao.org/4/t1970e/t1970e00.htm)
+by P.S. Shetty & W.P.T. James
+FAO 1994.
+Rowett Research Institute
+Aberdeen, UK
+
+<!-- 
+Figure 6.1 - BMI and "Equivalent days. of illness among Rwandese women, 1982
+Figure 6.3 - BMI and the probability of illness among Brazilian women (PNSN Survey, 1989)
+TABLE 6.2 Mortality rates for men according to BMI categories (Hyderabad) - Source: Satyanarayana et al., 1 99 1.
+
+-->
+
 
 
 ---
