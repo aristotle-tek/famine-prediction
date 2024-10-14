@@ -4,9 +4,6 @@ import pandas as pd
 import warnings
 
 
-# calculate_cereal_deficit
-# update_bmi
-# calculate_excess_mortality
 
 # Energy requirements based on BMI categories
 energy_requirements = {
@@ -65,13 +62,13 @@ def calculate_energy_deficit(cereal_intake, bmi, energy_requirements, percent_gr
     energy_intake = cereal_intake / percent_grain
 
     # Calculate energy deficit or surplus fraction
-    deficit = (energy_requirement - energy_intake) / energy_requirement  # Positive for deficit, negative for surplus
+    deficit = min((energy_requirement - energy_intake) / energy_requirement, 1.0) # Positive for deficit, negative for surplus, max 100%
 
     return deficit
 
 
 
-def update_bmi(deficit, bmi_prev, recovery=False, factor_deficit=0.096, recovery_factor=3.52):
+def update_bmi(deficit, bmi_prev, recovery=False, factor_deficit=0.091, factor_adj=3.41316, recovery_factor=3.52):
     """
     Calculate the updated BMI based on energy deficit/surplus and previous BMI.
 
@@ -79,8 +76,8 @@ def update_bmi(deficit, bmi_prev, recovery=False, factor_deficit=0.096, recovery
         deficit (float): Energy deficit (positive for deficit, negative for surplus) as a fraction of the energy requirement.
         bmi_prev (float): The BMI of the previous month.
         recovery (bool): whether in recovery
-        factor_deficit (float): Coefficient for BMI adjustment during deficit (default is 0.096).
-        recovery_factor (float): Coefficient for BMI adjustment during recovery (default is 3.52).
+        factor_deficit (float): Coefficient for BMI adjustment during deficit (0.0914 or 0.096).
+        recovery_factor (float): Coefficient for BMI adjustment during recovery
 
     Returns:
         float: The updated BMI for the current month.
@@ -101,14 +98,11 @@ def update_bmi(deficit, bmi_prev, recovery=False, factor_deficit=0.096, recovery
     # Adjust BMI based on deficit or surplus
     if recovery:
         # Recovery (surplus) case
-        factor = recovery_factor
-        delta_bmi = (3.0 * deficit) - (factor * (22 - bmi_prev))
+        delta_bmi = (recovery_factor * deficit) - (factor_deficit * (22 - bmi_prev))
         # Cap the BMI increase at 1 unit
-        delta_bmi = min(delta_bmi, 1.0)
+        #delta_bmi = min(delta_bmi, 1.0)
     else:
-        # Deficit case
-        factor = factor_deficit
-        delta_bmi = (3.0 * deficit) - (factor * (22 - bmi_prev))
+        delta_bmi = (factor_adj * deficit) - (factor_deficit * (22 - bmi_prev))
 
     bmi_new = bmi_prev - delta_bmi
 
@@ -149,7 +143,7 @@ class CalorieDistributor:
 
         Parameters:
         - pop_per_percentile: list or numpy array of populations for each percentile group (length 100)
-        - total_kcal_consumption: total number of calories to be distributed
+        - total_kcal_consumption: total number of calories per day to be distributed
         - kcal_min: minimum allowable caloric intake per individual
         - kcal_max: maximum allowable caloric intake per individual
         - epsilon: allowable margin of error for total caloric consumption (as a fraction, e.g., 0.001 for 0.1%)
@@ -274,26 +268,42 @@ class CalorieDistributor:
 
 
 class BMIDistribution:
-    def __init__(self, method='linear', top_bmi=30, data_file=None):
+    """
+    Class to generate the initial BMI distribution based on one of:
+    - a linear distribution with a specified top BMI value
+    - a logarithmic distribution to better approximate reference data
+    - a reference distribution from the provided data file.
+    """
+    def __init__(self, method='linear', top_bmi=30, bottom_bmi=18, data_file=None):
         self.percentiles = np.arange(1, 101)
         self.bmi_init = None
-        
+
         if method == 'linear':
             self.bmi_init = self._assign_initial_bmi_linear(top_bmi)
+        elif method == 'logarithmic':
+            self.bmi_init = self._assign_initial_bmi_logarithmic(top_bmi, bottom_bmi)
         elif method == 'reference':
             if data_file is None:
                 raise ValueError("A data file must be provided for the 'reference' method.")
             self.bmi_init = self._assign_initial_bmi_reference(data_file)
         else:
-            raise ValueError("Invalid method. Choose either 'linear' or 'reference'.")
+            raise ValueError("Invalid method. Choose 'linear', 'logarithmic', or 'reference'.")
 
     def _assign_initial_bmi_linear(self, top_bmi):
-        return [top_bmi - ((percentile - 1) * (12 / 99)) for percentile in self.percentiles]
+        return [top_bmi - ((percentile - 1) * (12 / 99)) for percentile in self.percentiles[::-1]]
+
+    def _assign_initial_bmi_logarithmic(self, top_bmi, bottom_bmi, alpha=0.7):
+        """alpha is the exponent for the logarithmic distribution.
+        For a 'flatter' curve, closer to the linear, use alpha < 1."""
+        delta_bmi = top_bmi - bottom_bmi
+        max_ln = np.log(100)
+        return [bottom_bmi + delta_bmi * (np.log(101 - percentile) / max_ln) ** alpha for percentile in self.percentiles][::-1]
 
     def _assign_initial_bmi_reference(self, data_file):
         dfbmi = pd.read_excel(data_file, sheet_name="energy_intake_dist")
         bmi_init = dfbmi[dfbmi.data == "bmi_init"].values
-        return bmi_init[0][1:]
+        relvalues = bmi_init[0][1:]
+        return relvalues[::-1]
 
     def get_bmi_distribution(self):
         return self.bmi_init
