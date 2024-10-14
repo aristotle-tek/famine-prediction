@@ -15,6 +15,10 @@ For a more narrative overview, see a discussion of this material in the [blog po
 Or [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/aristotle-tek/famine-prediction/blob/main/notebooks/fundamentals_walkthrough.ipynb)
 For a more narrative overview, see a discussion of this material in the [blog post here](https://theoryandaction.substack.com/p/transparent-famine-models-ii).
 
+2) A (draft) overview of the resource scarcity model (combining the above with monthly predictions) in `notebooks/scarcity_model_walkthrough.ipynb` 
+Or [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/aristotle-tek/famine-prediction/blob/main/notebooks/scarcity_model_walkthrough.ipynb)
+
+
 There are also some basic references on approaches to modeling in `/modeling_literature`
 
 
