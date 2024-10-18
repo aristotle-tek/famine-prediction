@@ -27,7 +27,7 @@ cmap_mortality = LinearSegmentedColormap.from_list('custom_mortality', [
 ])
 
 
-def plot_percentiles_heatmap(data_pivot, title, cmap, vmin, vmax, filename, x_labels):
+def plot_percentiles_heatmap(data_pivot, title, cmap, vmin, vmax, filename, x_labels, show=False):
     data_pivot = data_pivot.apply(pd.to_numeric, errors='coerce')
 
     # Notify if there are any missing values
@@ -35,7 +35,6 @@ def plot_percentiles_heatmap(data_pivot, title, cmap, vmin, vmax, filename, x_la
         print('Warning: Missing values detected. Forward filling missing values.')
     
     # Handle missing values
-    # deprecated, but might work with older versions: data_pivot = data_pivot.fillna(method='ffill')
     data_pivot = data_pivot.ffill()
 
     # Create y-axis labels: full range for percentiles
@@ -47,7 +46,7 @@ def plot_percentiles_heatmap(data_pivot, title, cmap, vmin, vmax, filename, x_la
     plt.figure(figsize=(12, 8))
     sns.heatmap(
         data_pivot,
-        xticklabels=x_labels, # months
+        xticklabels=x_labels,  # months
         yticklabels=y_labels_to_show,  # Show only every 10th y-axis label
         cmap=cmap,
         vmin=vmin,
@@ -57,6 +56,11 @@ def plot_percentiles_heatmap(data_pivot, title, cmap, vmin, vmax, filename, x_la
     plt.xlabel('')
     plt.ylabel('Percentile Group')
     plt.tight_layout()
-    plt.savefig(filename)
-    plt.close()
+
+    if show:
+        plt.show()
+    else:
+        plt.savefig(filename)
+        plt.close()
+
 
