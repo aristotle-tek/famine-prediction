@@ -258,5 +258,10 @@ The only repository I could find with more than two stars is this:
 
 
 
+---
+## Uncertainty and Sensitivity Modeling
 
+Saltelli, A. et al. Global Sensitivity Analysis: the Primer. John Wiley & Sons, 2008.
+
+<!-- bibtex-key:saltelli2008global -->
 

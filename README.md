@@ -24,17 +24,18 @@ We provide several Jupyter notebooks to walk through the main calculations:
 
 1. [Walkthrough of calculating available calories (2023-2024)](notebooks/est_kcal_walkthrough.ipynb)  
     Or [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/aristotle-tek/famine-prediction/blob/main/notebooks/est_kcal_walkthrough.ipynb)
-    For a more narrative overview, see the [blog post here](https://theoryandaction.substack.com/p/transparent-famine-models-i-counting).
+    For a more narrative overview, see [here](https://theoryandaction.substack.com/p/transparent-famine-models-i-counting).
 
 2. [Fundamentals of caloric deficit, BMI change, and excess mortality](notebooks/fundamentals_walkthrough.ipynb)  
     Or [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/aristotle-tek/famine-prediction/blob/main/notebooks/fundamentals_walkthrough.ipynb)
     Offers an overview of basic calculations related to caloric deficits, changes in BMI, and corresponding effects on excess mortality.
-    For a more narrative overview, see a discussion in the [blog post here](https://theoryandaction.substack.com/p/transparent-famine-models-ii).
+    For a more narrative overview, see a discussion [ here](https://theoryandaction.substack.com/p/transparent-famine-models-ii).
 
 3. [Resource scarcity model elements](notebooks/model_elements.ipynb)
     Or [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/aristotle-tek/famine-prediction/blob/main/notebooks/model_elements.ipynb)
     Explains the assumptions on initial BMI distrubtion and how calories are distributed across the population, and the list of updates calculated for each month, and 
-  
+    For a more narrative overview, see a discussion [here](https://theoryandaction.substack.com/p/transparent-famine-models-iii).
+
 4. [Run the resource scarcity model and generate plots](notebooks/scarcity_model_run.ipynb)  
     Or [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/aristotle-tek/famine-prediction/blob/main/notebooks/scarcity_model_run.ipynb)
     Executes a single run of the resource scarcity model and generates output plots.

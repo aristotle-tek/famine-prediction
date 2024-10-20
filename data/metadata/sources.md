@@ -1,11 +1,11 @@
 
 ----
 
-### FAO: CFSAM national cereal production estimate
+## FAO: [CFSAM national cereal production estimate](https://www.fao.org/markets-and-trade/publications/detail/en/c/1679419/)
 
 (Cited in Clingendael report)
 
-https://www.fao.org/markets-and-trade/publications/detail/en/c/1679419/
+
 "FAO, 2024. Special Report 2023: FAO Crop and Food Supply Assessment Mission (CFSAM) to the Sudan, 19 March 2024"
 available here: https://reliefweb.int/report/sudan/special-report-2023-fao-crop-and-food-supply-assessment-mission-cfsam-sudan-19-march-2024-enar
 
@@ -18,11 +18,23 @@ cereal_file = base_path / 'data' / 'raw' / 'available_calories' / 'FAO_CFSAM_cer
 ```
 
 ----
+## [IPC Analysis Acute Food Insecurity April 2024](https://www.ipcinfo.org/ipc-country-analysis/details-map/en/c/1157066/?iso3=SDN)
+
+Note: I'm not sure this is the latest version - there is conflicting data information:
+- "Create date: 19.10.2024" within the xlsx file.
+- It was downloaded from the above website that lists:
+"RELEASE DATE:  27.06.2024"
+"VALIDITY PERIOD: 01.04.2024 > 28.02.2025"
+- The file has "April-2024" in the filename.
+
+<!-- data/raw/IPC/SD-IPC-Analysis-Acute-Food-Insecurity-April-2024.xlsx -->
+
+----
 
 ### To convert from metric tons of sorghum, millet, wheat to kcal:
 
-"Comparative Study of Nutritional Value of Wheat, Maize, Sorghum, Millet, and Fonio: Some Cereals Commonly Consumed in Côte d’Ivoire" European scientific Journal
-https://eujournal.org/index.php/esj/article/view/13166/13300
+["Comparative Study of Nutritional Value of Wheat, Maize, Sorghum, Millet, and Fonio: Some Cereals Commonly Consumed in Côte d’Ivoire"](https://eujournal.org/index.php/esj/article/view/13166/13300) European scientific Journal
+
 
 parameter Wheat Maize Sorghum Millet Fonio
 EV (Kcal / 100 g DM) 308.22 ± 14.36 321.79 ± 18.03 308.84 ± 15.13 319.39 ± 17.67 284.72 ± 19.65
@@ -96,12 +108,12 @@ Topic: Health: Population: Structure
 
 
 
-
+<!-- 
  ---
 
- this is too specific - protein malnutrition problems ---   
+ (too specific - protein malnutrition problems)
 ### Protein Energy Malnutrition](https://www.childrenscolorado.org/globalassets/healthcare-professionals/clinical-pathways/protein-energy-malnutrition.pdf) 
 Children's Hospital Colorado
 (a.k.a. "Failure to Thrive" which is "a stigmatizing and non-specific term")
-
+ -->
 
