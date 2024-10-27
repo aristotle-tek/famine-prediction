@@ -6,11 +6,15 @@ from dateutil.relativedelta import relativedelta
 from pathlib import Path
 from src.model_utils import energy_requirements, BMIDistribution, CalorieDistributor, calculate_energy_deficit, update_bmi, calculate_excess_mortality
 
+
+
 class ResourceScarcityModel:
     def __init__(self, config):
         self.config = config
         self.initialize_simulation()
         self.percentile_values = []
+        self.factor_deficit = self.config['factor_deficit']
+        self.factor_adj = self.config['factor_adj']
 
     def initialize_simulation(self):
         # Base path and data file
@@ -20,7 +24,7 @@ class ResourceScarcityModel:
         # Population and grain parameters
         self.total_pop = self.config['total_pop']
         self.grain_percentage = self.config['grain_percentage']
-        self.grain_stock = self.config['grain_stock']
+        self.grain_stock = [x * self.config['grain_multiplier'] for x in self.config['grain_stock'] ]
 
         # Time parameters
         self.months_and_days = self.get_months_and_days(
@@ -31,10 +35,10 @@ class ResourceScarcityModel:
         self.months = [month for month, days in self.months_and_days]
         self.days_p_month = [days for month, days in self.months_and_days]
 
-        # Monthly total consumption
+        # Monthly total consumption (* grain_multiplier for sensitivity analysis)
         self.monthly_total_consumption = pd.DataFrame({
             'month': self.months,
-            'total_demand': self.config['monthly_total_demand']
+            'total_demand': [demand * self.config['grain_multiplier'] for demand in self.config['monthly_total_demand']]
         })
 
         self.initialize_bmi_distribution()
@@ -143,7 +147,10 @@ class ResourceScarcityModel:
         self.percentile_groups.loc[alive_mask, 'bmi'] = self.percentile_groups.loc[alive_mask].apply(
             lambda row: update_bmi(
                 deficit=row['deficit'],
-                bmi_prev=row['bmi']
+                bmi_prev=row['bmi'],
+                recovery=False,
+                factor_deficit=self.factor_deficit,
+                factor_adj=self.factor_adj
             ),
             axis=1
         )

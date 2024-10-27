@@ -2,7 +2,13 @@ import math
 import numpy as np
 import pandas as pd
 import warnings
+import json
 
+
+def load_config(file_path):
+    with open(file_path, 'r') as file:
+        config = json.load(file)
+    return config
 
 
 # Energy requirements based on BMI categories
