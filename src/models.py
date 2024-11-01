@@ -19,7 +19,13 @@ class ResourceScarcityModel:
     def initialize_simulation(self):
         # Base path and data file
         self.base_path = Path.cwd()
-        self.data_file = self.base_path / 'data' / 'processed' / 'Combined_2024-09-22.xlsx'
+        self.data_file = self.base_path / 'data' / 'processed' / 'Combined_2024-10-30.xlsx'
+
+        # ref data
+        self.ref_data = pd.read_excel(self.data_file, sheet_name='Sc4')
+        self.ref_data['month'] = pd.to_datetime(self.ref_data['month-year'], format='%m/%y')
+        #if self.config['monthly_total_demand'] is None:
+            # load from the 'consumption column of the ref data
 
         # Population and grain parameters
         self.total_pop = self.config['total_pop']
@@ -115,7 +121,7 @@ class ResourceScarcityModel:
 
     def distribute_calories(self, i):
         pop_array = self.percentile_groups['pop'].values
-        distributor = CalorieDistributor(pop_array, self.total_cons_kcal_per_day)
+        distributor = CalorieDistributor(pop_array, self.total_cons_kcal_per_day,  kcal_min=self.config['distrib_kcal_min'])
         distrib_method = self.config['distrib_method']
         if distrib_method == 'linear':
             kcal_distrib = distributor.linear_distribution(beta1=self.config['distrib_beta1'])

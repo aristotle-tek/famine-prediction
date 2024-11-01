@@ -3,6 +3,7 @@ import numpy as np
 import pandas as pd
 import warnings
 import json
+from scipy.optimize import brentq
 
 
 def load_config(file_path):
@@ -124,6 +125,8 @@ def calculate_excess_mortality(BMIt_minus_1):
     gradually increasing mortality levels below this, 
     and rapidly increasing mortality rates for BMI values below 13 kg/m2"
 
+    updated formula: 0.00028*e((18.5‑BMIt-1)^1.33)
+
     Parameters:
     BMIt_minus_1 (float): BMI value from the previous month.
 
@@ -136,23 +139,16 @@ def calculate_excess_mortality(BMIt_minus_1):
     if BMIt_minus_1 >= 18.5:
         return 0.0
     else:
-        excess_mortality = 0.00023 * math.exp((18.5 - BMIt_minus_1) ** 1.36)
+        #excess_mortality = 0.00023 * math.exp((18.5 - BMIt_minus_1) ** 1.36)
+        excess_mortality = 0.00028 * math.exp((18.5 - BMIt_minus_1) ** 1.33)
         # mortality = percent, so don't return higher than 1.0:
         return min(excess_mortality, 1.0)
 
 
-
 class CalorieDistributor:
-    def __init__(self, pop_per_percentile, total_kcal_consumption, kcal_min=500, kcal_max=1540, epsilon=0.001):
+    def __init__(self, pop_per_percentile, total_kcal_consumption, kcal_min=700, kcal_max=1540, epsilon=0.001):
         """
         Initializes the CalorieDistributor with population data and constraints.
-
-        Parameters:
-        - pop_per_percentile: list or numpy array of populations for each percentile group (length 100)
-        - total_kcal_consumption: total number of calories per day to be distributed
-        - kcal_min: minimum allowable caloric intake per individual
-        - kcal_max: maximum allowable caloric intake per individual
-        - epsilon: allowable margin of error for total caloric consumption (as a fraction, e.g., 0.001 for 0.1%)
         """
         self.pop_per_percentile = np.array(pop_per_percentile)
         self.total_kcal_consumption = total_kcal_consumption
@@ -164,51 +160,127 @@ class CalorieDistributor:
     def linear_distribution(self, beta1):
         """
         Distributes calories linearly across percentiles based on the given slope beta1.
-        (ie. treat percentiles as the x and average caloric consumption as the y, 
-        then we have $y= beta0 + beta1 * x$ and 
-        $\\int_x=1^x=100 ( \beta_0 + \beta1 * x) = total_kcal_consumption $$)
-
-        Parameters:
-        - beta1: slope of the linear distribution (the rate at which calories increase per percentile)
-
-        Returns:
-        - numpy array of average caloric intake per individual for each percentile group
+        Adjusts the distribution when necessary by capping at kcal_min or kcal_max, and raises kcal_max to 1820 if excess calories remain.
         """
-        pop = self.pop_per_percentile
-        x = self.percentiles  # x_i from 1 to 100
-        S = np.sum(pop)
-        S_x = np.sum(x * pop)
+        def calculate_distribution(kcal_max):
+            pop = self.pop_per_percentile
+            x = self.percentiles  # x_i from 1 to 100
+            S_p = np.sum(pop)
+            S_p_x = np.sum(pop * x)
 
-        # Calculate beta0 based on the total kcal consumption constraint
-        beta0 = (self.total_kcal_consumption - beta1 * S_x) / S
+            # Calculate beta0 range based on kcal_min and kcal_max constraints
+            beta0_min = self.kcal_min - beta1 * 100
+            beta0_max = kcal_max - beta1 * 1
 
-        # Enforce constraints on beta0 to ensure y_i are within kcal_min and kcal_max
+            # Function to compute total kcal given beta0
+            def total_kcal(beta0):
+                y = beta0 + beta1 * x
+                y = np.clip(y, self.kcal_min, kcal_max)
+                return np.sum(y * pop)
 
-        beta0_min = self.kcal_min - beta1 * 1
-        beta0_max = self.kcal_max - beta1 * 100
+            # Check if total_kcal can be matched within beta0_min and beta0_max
+            total_kcal_min = total_kcal(beta0_min)
+            total_kcal_max = total_kcal(beta0_max)
 
-        # ? Consider other behavior here, e.g. assert ??
-        if beta0 < beta0_min:
-            beta0 = beta0_min
-            warnings.warn("beta0 adjusted to beta0_min to satisfy kcal_min constraint.")
-        elif beta0 > beta0_max:
-            beta0 = beta0_max
-            warnings.warn("beta0 adjusted to beta0_max to satisfy kcal_max constraint.")
+            if total_kcal_min - self.total_kcal_consumption > self.epsilon * self.total_kcal_consumption:
+                # Insufficient calories: Cap lower percentiles at kcal_min
+                def total_kcal_diff_lower(c):
+                    idx1 = x <= c
+                    idx2 = x > c
+                    S2 = np.sum(pop[idx2])
+                    S2_x = np.sum(pop[idx2] * x[idx2])
 
-        # Calculate the average caloric intake per percentile
-        y = beta0 + beta1 * x
+                    beta0 = (self.total_kcal_consumption - self.kcal_min * np.sum(pop[idx1]) - beta1 * S2_x) / S2
+                    y2 = beta0 + beta1 * x[idx2]
+                    y2 = np.clip(y2, self.kcal_min, kcal_max)
+                    total_kcal = self.kcal_min * np.sum(pop[idx1]) + np.sum(y2 * pop[idx2])
+                    return total_kcal - self.total_kcal_consumption
 
-        # Enforce kcal_min and kcal_max
-        y = np.clip(y, self.kcal_min, self.kcal_max)
+                c_lower, c_upper = 1, 99
+                f_lower, f_upper = total_kcal_diff_lower(c_lower), total_kcal_diff_lower(c_upper)
+                if f_lower * f_upper > 0:
+                    return None  # Indicates failure to find valid distribution
 
-        # Recompute total kcal consumption with adjusted y
-        total_kcal = np.sum(y * pop)
+                c_opt = brentq(total_kcal_diff_lower, c_lower, c_upper, xtol=0.01)
+                idx1 = x <= c_opt
+                idx2 = x > c_opt
+                S2 = np.sum(pop[idx2])
+                S2_x = np.sum(pop[idx2] * x[idx2])
+                beta0 = (self.total_kcal_consumption - self.kcal_min * np.sum(pop[idx1]) - beta1 * S2_x) / S2
 
-        # Check if the total kcal matches the target within the allowable epsilon
+                y = np.zeros_like(x, dtype=float)
+                y[idx1] = self.kcal_min
+                y[idx2] = beta0 + beta1 * x[idx2]
+                y = np.clip(y, self.kcal_min, kcal_max)
+
+            elif self.total_kcal_consumption - total_kcal_max > self.epsilon * self.total_kcal_consumption:
+                # Excess calories: Cap higher percentiles at kcal_max
+                def total_kcal_diff_upper(c):
+                    idx1 = x <= c
+                    idx2 = x > c
+                    S1 = np.sum(pop[idx1])
+                    S1_x = np.sum(pop[idx1] * x[idx1])
+
+                    beta0 = (self.total_kcal_consumption - kcal_max * np.sum(pop[idx2]) - beta1 * S1_x) / S1
+                    y1 = beta0 + beta1 * x[idx1]
+                    y1 = np.clip(y1, self.kcal_min, kcal_max)
+                    total_kcal = np.sum(y1 * pop[idx1]) + kcal_max * np.sum(pop[idx2])
+                    return total_kcal - self.total_kcal_consumption
+
+                c_lower, c_upper = 1, 99
+                f_lower, f_upper = total_kcal_diff_upper(c_lower), total_kcal_diff_upper(c_upper)
+                if f_lower * f_upper > 0:
+                    return None  # Indicates failure to find valid distribution
+
+                c_opt = brentq(total_kcal_diff_upper, c_lower, c_upper, xtol=0.01)
+                idx1 = x <= c_opt
+                idx2 = x > c_opt
+                S1 = np.sum(pop[idx1])
+                S1_x = np.sum(pop[idx1] * x[idx1])
+                beta0 = (self.total_kcal_consumption - kcal_max * np.sum(pop[idx2]) - beta1 * S1_x) / S1
+
+                y = np.zeros_like(x, dtype=float)
+                y[idx1] = beta0 + beta1 * x[idx1]
+                y[idx2] = kcal_max
+                y = np.clip(y, self.kcal_min, kcal_max)
+
+            else:
+                # Beta0 can be adjusted within beta0_min and beta0_max
+                def total_kcal_diff(beta0):
+                    y = beta0 + beta1 * x
+                    y = np.clip(y, self.kcal_min, kcal_max)
+                    return np.sum(y * pop) - self.total_kcal_consumption
+
+                f_beta0_min, f_beta0_max = total_kcal_diff(beta0_min), total_kcal_diff(beta0_max)
+                if f_beta0_min * f_beta0_max > 0:
+                    return None  # Indicates failure to find valid distribution
+
+                beta0 = brentq(total_kcal_diff, beta0_min, beta0_max, xtol=self.epsilon)
+                y = beta0 + beta1 * x
+                y = np.clip(y, self.kcal_min, kcal_max)
+
+            return y
+
+        # Try initial distribution with self.kcal_max
+        y = calculate_distribution(self.kcal_max)
+        if y is None or np.sum(y * self.pop_per_percentile) < self.total_kcal_consumption:
+            # Excess calories: Raise kcal_max to 1820 and recalculate
+            warnings.warn(f"Raising kcal_max to 1820 due to excess calories.")
+            y = calculate_distribution(1820)
+
+        if y is None:
+            #assert False, "No valid distribution found."
+            # Fallback to uniform distribution if no valid distribution was found
+            warnings.warn("No valid distribution found; using fallback uniform distribution.")
+            y = np.full(100, self.total_kcal_consumption / np.sum(self.pop_per_percentile))
+
+        # Final check to ensure total kcal consumption within epsilon
+        total_kcal = np.sum(y * self.pop_per_percentile)
         if abs(total_kcal - self.total_kcal_consumption) > self.epsilon * self.total_kcal_consumption:
-            warnings.warn("Total kcal consumption does not match within epsilon after adjusting beta0.")
+            warnings.warn("Total kcal consumption does not match within epsilon after adjustments.")
 
         return y
+
 
     def piecewise_linear_distribution(self, beta1, c):
         """

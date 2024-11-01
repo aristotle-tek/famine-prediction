@@ -40,6 +40,11 @@ We provide several Jupyter notebooks to walk through the main calculations:
     Or [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/aristotle-tek/famine-prediction/blob/main/notebooks/scarcity_model_run.ipynb)
     Executes a single run of the resource scarcity model and generates output plots.
 
+4. [Simple sensitivity analysis of the model](notebooks/sensitivity.ipynb)  
+    Or [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/aristotle-tek/famine-prediction/blob/main/notebooks/sensitivity.ipynb)
+    Evaluate the relative importance of five inputs using Sobol indices.
+
+
 ## Modeling Literature
 
 In addition to the notebooks, there are references and resources on approaches to modeling in the [literature folder](modeling_literature/).
