@@ -10,15 +10,26 @@ Warning! - for now there are no experts involved, just some curiosity and a desi
 
 ## Objectives
 
-The current focus is our reconstruction of the famine model described in the following Clingendael Institute reports (but we are of course responsible for any errors!):
+## 1. Resource Scarcity Model
+
+We replicate (with some minor changes) the famine model described in the following Clingendael Institute reports (but we are of course responsible for any errors!):
 
 - [Sudan: From hunger to death](https://www.clingendael.org/publication/sudan-hunger-death) 
 2024-05-24, Dr. Timmo Gaasbeek. 
 
 - [From Catastrophe to Famine: Immediate action needed in Sudan to contain mass starvation](https://www.clingendael.org/publication/catastrophe-famine-immediate-action-needed-sudan-contain-mass-starvation) 2024-02-08. Anette Hoffmann. 
 
+## 2. Price Models
 
-## Start here
+We also provide code for estimating famine alerts based on food price changes using the methodology described in 
+
+Baquedano, F. G. (2015). [Developing an indicator of price anomalies as an early warning tool: A compound growth approach](https://www.fao.org/3/i7550e/i7550e.pdf). Food and Agricultural Organization (FAO).
+
+
+
+
+
+## Resource Scarcity Model - Start here
 
 We provide several Jupyter notebooks to walk through the main calculations:
 
@@ -40,9 +51,17 @@ We provide several Jupyter notebooks to walk through the main calculations:
     Or [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/aristotle-tek/famine-prediction/blob/main/notebooks/scarcity_model_run.ipynb)
     Executes a single run of the resource scarcity model and generates output plots.
 
-4. [Simple sensitivity analysis of the model](notebooks/sensitivity.ipynb)  
+5. [Simple sensitivity analysis of the model](notebooks/sensitivity.ipynb)  
     Or [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/aristotle-tek/famine-prediction/blob/main/notebooks/sensitivity.ipynb)
     Evaluate the relative importance of five inputs using Sobol indices.
+
+
+## Price Anomaly Early Warning Model - Start here
+
+
+[Walkthrough of the price anomaly model based on Baquedano](notebooks/price_model_walkthrough.ipynb)  
+    Or [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/aristotle-tek/famine-prediction/blob/main/notebooks/price_model_walkthrough.ipynb)
+
 
 
 ## Modeling Literature
