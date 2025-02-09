@@ -2,9 +2,16 @@ from statsmodels.tsa.stattools import adfuller, kpss
 
 try:
     from arch.unitroot import DFGLS
-except ImportError:
+except ImportError as exc:
     DFGLS = None
+    import_warning = exc  # Store orig exception for later reference
 
+
+try:
+    from arch.unitroot import PhillipsPerron
+except ImportError as exc:
+    PhillipsPerron = None
+    pp_import_warning = exc
 
 def test_adf(series, regression='ct', autolag='AIC'):
     """
@@ -24,7 +31,11 @@ def test_adf(series, regression='ct', autolag='AIC'):
         dict: A dictionary with the test statistic, p-value, number of lags used,
               number of observations, critical values, and (if available) the information criterion.
     """
-    result = adfuller(series.dropna(), regression=regression, autolag=autolag)
+    series_clean = series.dropna()
+    if series_clean.empty:
+        raise ValueError("Input time series is empty after dropping NaN values.")
+    
+    result = adfuller(series_clean, regression=regression, autolag=autolag)
     return {
         'Test Statistic': result[0],
         'p-value': result[1],
@@ -56,12 +67,12 @@ def test_pp(series, trend='ct', **kwargs):
     Raises:
         ImportError: If the 'arch' package is not installed.
     """
-    try:
-        from arch.unitroot import PhillipsPerron
-    except ImportError:
-        raise ImportError("Phillips-Perron test requires the 'arch' package. Install it via pip.")
-    
+    if PhillipsPerron is None:
+        raise ImportError("Phillips-Perron test requires the 'arch' package. Install it via pip.") from pp_import_warning
+
     series_clean = series.dropna()
+    if series_clean.empty:
+        raise ValueError("Input time series is empty after dropping NaN values.")
     pp_test = PhillipsPerron(series_clean, trend=trend, **kwargs)
     return {
         'Test Statistic': pp_test.stat,
@@ -91,8 +102,10 @@ def test_dfgls(series, trend='ct', **kwargs):
         ImportError: If the 'arch' package is not installed.
     """
     if DFGLS is None:
-        raise ImportError("DFGLS test requires the 'arch' package. Please install it via pip.")
+        raise ImportError("DFGLS test requires the 'arch' package. Please install it via pip.") from import_warning
     series_clean = series.dropna()
+    if series_clean.empty:
+        raise ValueError("Input time series is empty after dropping NaN values.")
     test = DFGLS(series_clean, trend=trend, **kwargs)
     return {
         'Test Statistic': test.stat,
@@ -118,7 +131,10 @@ def test_kpss(series, regression='ct', **kwargs):
     Returns:
         dict: A dictionary containing the test statistic, p-value, number of lags used, and critical values.
     """
-    result = kpss(series.dropna(), regression=regression, **kwargs)
+    series_clean = series.dropna()
+    if series_clean.empty:
+        raise ValueError("Input time series is empty after dropping NaN values.")
+    result = kpss(series_clean, regression=regression, **kwargs)
     return {
         'Test Statistic': result[0],
         'p-value': result[1],
