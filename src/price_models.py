@@ -1,6 +1,8 @@
 """
-Currently includes functions to follow the Baquedano approach to price anomaly detection:
-"Developing an indicator of price anomalies as an early warning tool: A compound growth approach"
+Currently includes functions to follow the Baquedano
+approach to price anomaly detection:
+"Developing an indicator of price anomalies as
+an early warning tool: A compound growth approach"
 Felix G. Baquedano. FAO, Rome, 2015.
 """
 
@@ -11,8 +13,10 @@ def compute_cgr(series, window):
     Compute the compound growth rate (CGR) over a rolling window.
 
     Following Baquedano (2015):
-    "The CGR is the growth in any random variable from a time period $t_0$ to $t_n$, 
-    raised to the power of one over the length of the period of time being considered, as highlighted in Equation 1:
+    "The CGR is the growth in any random variable
+    from a time period $t_0$ to $t_n$, 
+    raised to the power of one over the length of
+    the period of time being considered, as highlighted in Equation 1:
     
     CGR_t = \left(\frac{P_{t_n}}{P_{t_0}}\right)^{\frac{1}{t_n-t_0}} - 1
     
@@ -29,9 +33,11 @@ def compute_cgr(series, window):
 
 def compute_volatility(series, window):
     r"""
-    Compute volatility as the rolling standard deviation of log differences.
+    Compute volatility as the rolling standard
+    deviation of log differences.
 
-    Baquedano (2015): "We define volatility as the standard deviation of log differences."
+    Baquedano (2015): "We define volatility as the
+    standard deviation of log differences."
     
     Parameters:
       series (pd.Series): Time series of prices.
@@ -49,8 +55,11 @@ def adjust_cgr_for_volatility(cgr_series, vol_series):
     Adjust the compound growth rate (CGR) for volatility.
 
     Baquedano (2015):
-    "By reducing the slope of the compound growth rate, the deviations with respect to the average of the compound growth rate 
-    at month $t$, will be smaller ... we deflate the CGR by its respective measure, as shown in Equation 3:
+    "By reducing the slope of the compound growth rate,
+    the deviations with respect to the average of
+    the compound growth rate at month $t$, will be smaller ...
+    we deflate the CGR by its respective measure,
+    as shown in Equation 3:
     
     vCGR_t = CGR_t \times (1 - \sigma_{[P_{t_0}-P_{t_n}]} )
     
@@ -69,7 +78,8 @@ def weighted_mean(values, weights):
 
     Following Baquedano (2015) Equation (4):
 
-    \overline{vCGR}_{Wt} = \frac{1}{\sum_{y=1}^\gamma w_y} \sum_{y=1}^\gamma w_y \, vCGR_{yt}
+    \overline{vCGR}_{Wt} = \frac{1}{\sum_{y=1}^\gamma w_y}
+      \sum_{y=1}^\gamma w_y \, vCGR_{yt}
     
     Parameters:
       values (np.array): Array of values.
@@ -85,7 +95,9 @@ def weighted_std(values, weights):
     Compute the weighted standard deviation.
 
     Baquedano (2015) Equation (5):
-    \hat{\sigma}_{vCGR,Wt} = \sqrt{\frac{\sum_{y=1}^\gamma w_y (vCGR_{yt} - \overline{vCGR}_{Wt})^2}{\sum_{y=1}^\gamma w_y (\gamma-1)/\gamma}}
+    \hat{\sigma}_{vCGR,Wt} = 
+      \sqrt{\frac{\sum_{y=1}^\gamma w_y (vCGR_{yt} -
+      \overline{vCGR}_{Wt})^2}{\sum_{y=1}^\gamma w_y (\gamma-1)/\gamma}}
     
     Parameters:
       values (np.array): Array of values.
@@ -106,8 +118,8 @@ def compute_anomaly_score(vcgr, w_mean, w_std):
 
     IPA_t^Z = \frac{vCGR_t - \overline{vCGR}_{Wt}}{\sigma_{vCGR,Wt}}
     
-    This represents the number of weighted standard deviations that the current vCGR deviates 
-    from its weighted mean.
+    This represents the number of weighted standard deviations
+    that the current vCGR deviates from its weighted mean.
     
     Parameters:
       vcgr (float): The current volatility-adjusted CGR.
@@ -143,12 +155,16 @@ def classify_anomaly(score):
 
 def compute_gamma(vcqgr_series, vcagr_series):
     r"""
-    Compute the weight $\gamma$, determining the relative importance of the quarterly and annual signals.
+    Compute the weight $\gamma$, determining the relative 
+    importance of the quarterly and annual signals.
 
     Baquedano (2015):
     
-    "A critical component of the IPA_t is the value of \gamma. ... The PCA allows us to calculate the eigenvalues 
-    for both of these compound growth rates. The ratio of each eigenvalue to the sum of the variances gives us the value for \gamma."
+    "A critical component of the IPA_t is the value of \gamma. 
+    ... The PCA allows us to calculate the eigenvalues 
+    for both of these compound growth rates.
+    The ratio of each eigenvalue to the sum of the variances
+    gives us the value for \gamma."
     
     Parameters:
       vcqgr_series (pd.Series or np.array): Volatility-adjusted quarterly CGR.

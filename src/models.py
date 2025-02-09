@@ -133,7 +133,7 @@ class ResourceScarcityModel:
             self.bmi_init = bmi_linear.get_bmi_distribution()
         elif bmi_init_method == 'logarithmic':
             bmi_logarithmic = BMIDistribution(
-                method='logarithmic', 
+                method='logarithmic',
                 top_bmi=self.config['top_bmi']
                 )
             self.bmi_init = bmi_logarithmic.get_bmi_distribution()
