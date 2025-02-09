@@ -1,0 +1,11 @@
+numpy
+pandas
+statsmodels
+arch
+matplotlib
+SALib
+scipy
+seaborn
+jupyter
+python-dateutil
+
