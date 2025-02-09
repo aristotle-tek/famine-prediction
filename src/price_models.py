@@ -137,7 +137,7 @@ def classify_anomaly(score):
     """
     if score >= 1:
         return "Price Alert"
-    elif score >= 0.5:
+    if score >= 0.5:
         return "Price Watch"
     return "Normal"
 
@@ -196,11 +196,11 @@ def handle_missing_data(series, method='interpolate', **kwargs):
     if method == 'interpolate':
         # Time-based interpolation is recommended when the index is datetime.
         return series.interpolate(method='time', **kwargs)
-    elif method == 'ffill':
+    if method == 'ffill':
         return series.fillna(method='ffill', **kwargs)
-    elif method == 'bfill':
+    if method == 'bfill':
         return series.fillna(method='bfill', **kwargs)
-    elif method == 'drop':
+    if method == 'drop':
         return series.dropna()
     raise ValueError("Unsupported method. Choose 'interpolate', 'ffill', 'bfill', or 'drop'.")
     

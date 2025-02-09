@@ -3,10 +3,10 @@
 """ Utilities for the Resource dependency model."""
 
 import math
-import numpy as np
-import pandas as pd
 import warnings
 import json
+import numpy as np
+import pandas as pd
 from scipy.optimize import brentq
 
 
@@ -152,6 +152,9 @@ def calculate_excess_mortality(BMIt_minus_1):
 
 
 class CalorieDistributor:
+    """
+    Class for distributing caloric intake across percentiles based on population data and constraints.
+    """
     def __init__(self, pop_per_percentile, total_kcal_consumption, kcal_min=700, kcal_max=1540, epsilon=0.001):
         """
         Initializes the CalorieDistributor with population data and constraints.
@@ -269,7 +272,7 @@ class CalorieDistributor:
         y = calculate_distribution(self.kcal_max)
         if y is None or np.sum(y * self.pop_per_percentile) < self.total_kcal_consumption:
             # Excess calories: Raise kcal_max to 1820 and recalculate
-            warnings.warn(f"Raising kcal_max to 1820 due to excess calories.")
+            warnings.warn("Raising kcal_max to 1820 due to excess calories.")
             y = calculate_distribution(1820)
 
         if y is None:
@@ -409,41 +412,41 @@ def get_months_and_days(start_year, start_month, num_months):
 # Example usage (partial)
 if __name__ == "__main__":
     # Example 1: Deficit scenario
-    cereal_intake = 1400  # kcal
-    bmi_prev = 20.0
-    percent_grain = 0.7
+    CEREAL_INTAKE = 1400  # kcal
+    BMI_PREV = 20.0
+    PERCENT_GRAIN = 0.7
 
-    deficit = calculate_energy_deficit(cereal_intake, bmi_prev, energy_requirements, percent_grain)
-    bmi_new = update_bmi(deficit, bmi_prev)
+    deficit = calculate_energy_deficit(CEREAL_INTAKE, BMI_PREV, energy_requirements, PERCENT_GRAIN)
+    bmi_new = update_bmi(deficit, BMI_PREV)
 
     print(f"Deficit: {deficit:.2f}")
-    print(f"Previous BMI: {bmi_prev}")
+    print(f"Previous BMI: {BMI_PREV}")
     print(f"Updated BMI: {bmi_new:.2f}")
-    mortality = calculate_excess_mortality(bmi_prev)
+    mortality = calculate_excess_mortality(BMI_PREV)
     print(f"Excess mortality: {mortality:.2f}")
 
     # Example 2: Surplus (recovery) scenario
-    cereal_intake = 1800  # kcal
-    bmi_prev = 18.0
-    percent_grain = 0.7
+    CEREAL_INTAKE = 1800  # kcal
+    BMI_PREV = 18.0
+    PERCENT_GRAIN = 0.7
 
-    deficit = calculate_energy_deficit(cereal_intake, bmi_prev, energy_requirements, percent_grain)
-    bmi_new = update_bmi(deficit, bmi_prev)
+    deficit = calculate_energy_deficit(CEREAL_INTAKE, BMI_PREV, energy_requirements, PERCENT_GRAIN)
+    bmi_new = update_bmi(deficit, BMI_PREV)
 
     print(f"\nDeficit: {deficit:.2f}")
-    print(f"Previous BMI: {bmi_prev}")
+    print(f"Previous BMI: {BMI_PREV}")
     print(f"Updated BMI: {bmi_new:.2f}")
 
     # Example 3: Extreme BMI value
-    cereal_intake = 1600  # kcal
-    bmi_prev = 14.0  # Extreme low BMI
-    percent_grain = 0.7
+    CEREAL_INTAKE = 1600  # kcal
+    BMI_PREV = 14.0  # Extreme low BMI
+    PERCENT_GRAIN = 0.7
 
-    deficit = calculate_energy_deficit(cereal_intake, bmi_prev, energy_requirements, percent_grain)
-    bmi_new = update_bmi(deficit, bmi_prev)
-    mortality = calculate_excess_mortality(bmi_prev)
+    deficit = calculate_energy_deficit(CEREAL_INTAKE, BMI_PREV, energy_requirements, PERCENT_GRAIN)
+    bmi_new = update_bmi(deficit, BMI_PREV)
+    mortality = calculate_excess_mortality(BMI_PREV)
     print(f"\nDeficit: {deficit:.2f}")
-    print(f"Previous BMI: {bmi_prev}")
+    print(f"Previous BMI: {BMI_PREV}")
     print(f"Updated BMI: {bmi_new:.2f}")
     print(f"Excess mortality: {mortality:.2f}")
 

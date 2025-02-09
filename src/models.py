@@ -2,10 +2,10 @@
 
 import warnings
 from pathlib import Path
-import numpy as np
-import pandas as pd
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
+import numpy as np
+import pandas as pd
 
 from src.model_utils import energy_requirements, BMIDistribution, CalorieDistributor, calculate_energy_deficit, update_bmi, calculate_excess_mortality
 
@@ -174,18 +174,18 @@ class ResourceScarcityModel:
 
         self.percentile_groups.loc[alive_mask, 'deficit'] = self.percentile_groups.loc[alive_mask].apply(
             lambda row: calculate_energy_deficit(
-                cereal_intake=row['kcal_distrib'],
+                intake_kcal=row['kcal_distrib'],
                 bmi=row['bmi'],
-                energy_requirements=energy_requirements,
-                percent_grain=self.grain_percentage
+                energy_req_dict=energy_requirements,
+                grain_fraction=self.grain_percentage
             ),
             axis=1
         )
 
         self.percentile_groups.loc[alive_mask, 'bmi'] = self.percentile_groups.loc[alive_mask].apply(
             lambda row: update_bmi(
-                deficit=row['deficit'],
-                bmi_prev=row['bmi'],
+                energy_deficit=row['deficit'],
+                previous_bmi=row['bmi'],
                 recovery=False,
                 factor_deficit=self.factor_deficit,
                 factor_adj=self.factor_adj
@@ -218,7 +218,7 @@ class ResourceScarcityModel:
         self.total_deaths = self.total_deaths_due_to_bmi + self.total_deaths_excess_mortality
 
     def update_population(self, month):
-        # Get the population changes for the current month
+        """ Get the population changes for the current month. """
         month_population_changes = self.population_changes[self.population_changes['month'] == month]
 
         if not month_population_changes.empty:
