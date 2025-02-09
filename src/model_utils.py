@@ -5,10 +5,11 @@
 import math
 import warnings
 import json
+from dataclasses import dataclass
 import numpy as np
 import pandas as pd
 from scipy.optimize import brentq
-from dataclasses import dataclass
+
 
 
 def load_config(file_path):
@@ -30,13 +31,15 @@ energy_requirements = {
 
 def calculate_energy_deficit(intake_kcal, bmi, energy_req_dict, grain_fraction=0.7):
     """
-    Calculate the energy deficit (positive) or surplus (negative) as a fraction of the energy requirement.
+    Calculate the energy deficit (positive) or 
+    surplus (negative) as a fraction of the energy requirement.
 
     Args:
         intake_kcal (float): The cereal intake in kcal (must be positive).
         bmi (float): The current BMI of the individual.
         energy_req_dict (dict): Dictionary of energy requirements keyed by BMI category.
-        grain_fraction (float): The fraction of calories from grains (0 < value ≤ 1; default 0.7).
+        grain_fraction (float): The fraction of calories from
+            grains (0 < value ≤ 1; default 0.7).
 
     Returns:
         float: The energy deficit (or surplus, capped at 100%).
@@ -85,12 +88,18 @@ class BMIFactors:
     recovery_factor: float = 3.52
 
 
-def update_bmi(energy_deficit, previous_bmi, recovery=False, factors: BMIFactors = BMIFactors()):
+def update_bmi(
+        energy_deficit,
+        previous_bmi,
+        recovery=False,
+        factors: BMIFactors = BMIFactors()
+    ):
     """
     Calculate the updated BMI based on energy deficit/surplus and previous BMI.
 
     Args:
-        energy_deficit (float): Energy deficit (positive for deficit, negative for surplus) as a fraction.
+        energy_deficit (float): Energy deficit (positive for deficit,
+            negative for surplus) as a fraction.
         previous_bmi (float): Previous month's BMI.
         recovery (bool): Flag indicating recovery (surplus) scenario.
         factors (BMIFactors): Coefficients used for BMI adjustment.
@@ -139,22 +148,13 @@ def calculate_excess_mortality(bmi_prev):
     return min(excess_mortality, 1.0)
 
 
-# class CalorieDistributor:
-#     """
-#     Class for distributing caloric intake across percentiles based on population data and constraints.
-#     """
-#     def __init__(self, pop_per_percentile, total_kcal_consumption, kcal_min=700, kcal_max=1540, epsilon=0.001):
-#         self.pop_per_percentile = np.array(pop_per_percentile)
-#         self.total_kcal_consumption = total_kcal_consumption
-#         self.kcal_min = kcal_min
-#         self.kcal_max = kcal_max
-#         self.epsilon = epsilon
-#         self.percentiles = np.arange(1, 101)
 
 class CalorieDistributor:
     """
-    Class for distributing caloric intake across percentiles based on population data and constraints.
+    Class for distributing caloric intake across percentiles
+    based on population data and constraints.
     """
+
     def __init__(self, calorie_config):
         """
         Expects a calorie_config dictionary with keys:
@@ -176,106 +176,162 @@ class CalorieDistributor:
         Distribute calories linearly across percentiles using slope beta1.
         Adjusts distribution by capping at kcal_min or kcal_max.
         """
-        def calculate_distribution(max_kcal):
-            pop = self.pop_per_percentile
-            x = self.percentiles
+        # Main calculation with user-supplied kcal_max
+        y = self._calc_linear_distribution_core(beta1, self.kcal_max)
 
-            beta0_min = self.kcal_min - beta1 * 100
-            beta0_max = max_kcal - beta1
-
-            def total_kcal(beta0):
-                y = beta0 + beta1 * x
-                y = np.clip(y, self.kcal_min, max_kcal)
-                return np.sum(y * pop)
-
-            total_min = total_kcal(beta0_min)
-            total_max = total_kcal(beta0_max)
-
-            if total_min - self.total_kcal_consumption > self.epsilon * self.total_kcal_consumption:
-                def total_kcal_diff_lower(c):
-                    idx_lower = x <= c
-                    idx_upper = x > c
-                    s2 = np.sum(pop[idx_upper])
-                    s2_x = np.sum(pop[idx_upper] * x[idx_upper])
-                    beta0 = (self.total_kcal_consumption - self.kcal_min * np.sum(pop[idx_lower])
-                             - beta1 * s2_x) / s2
-                    y_upper = beta0 + beta1 * x[idx_upper]
-                    y_upper = np.clip(y_upper, self.kcal_min, max_kcal)
-                    total = self.kcal_min * np.sum(pop[idx_lower]) + np.sum(y_upper * pop[idx_upper])
-                    return total - self.total_kcal_consumption
-
-                c_lower, c_upper = 1, 99
-                f_lower, f_upper = total_kcal_diff_lower(c_lower), total_kcal_diff_lower(c_upper)
-                if f_lower * f_upper > 0:
-                    return None
-                c_opt = brentq(total_kcal_diff_lower, c_lower, c_upper, xtol=0.01)
-                idx_lower = x <= c_opt
-                idx_upper = x > c_opt
-                s2 = np.sum(pop[idx_upper])
-                s2_x = np.sum(pop[idx_upper] * x[idx_upper])
-                beta0 = (self.total_kcal_consumption - self.kcal_min * np.sum(pop[idx_lower])
-                         - beta1 * s2_x) / s2
-                y = np.zeros_like(x, dtype=float)
-                y[idx_lower] = self.kcal_min
-                y[idx_upper] = beta0 + beta1 * x[idx_upper]
-                y = np.clip(y, self.kcal_min, max_kcal)
-            elif self.total_kcal_consumption - total_max > self.epsilon * self.total_kcal_consumption:
-                def total_kcal_diff_upper(c):
-                    idx_lower = x <= c
-                    idx_upper = x > c
-                    s1 = np.sum(pop[idx_lower])
-                    s1_x = np.sum(pop[idx_lower] * x[idx_lower])
-                    beta0 = (self.total_kcal_consumption - max_kcal * np.sum(pop[idx_upper])
-                             - beta1 * s1_x) / s1
-                    y_lower = beta0 + beta1 * x[idx_lower]
-                    y_lower = np.clip(y_lower, self.kcal_min, max_kcal)
-                    total = np.sum(y_lower * pop[idx_lower]) + max_kcal * np.sum(pop[idx_upper])
-                    return total - self.total_kcal_consumption
-
-                c_lower, c_upper = 1, 99
-                f_lower, f_upper = total_kcal_diff_upper(c_lower), total_kcal_diff_upper(c_upper)
-                if f_lower * f_upper > 0:
-                    return None
-                c_opt = brentq(total_kcal_diff_upper, c_lower, c_upper, xtol=0.01)
-                idx_lower = x <= c_opt
-                idx_upper = x > c_opt
-                s1 = np.sum(pop[idx_lower])
-                s1_x = np.sum(pop[idx_lower] * x[idx_lower])
-                beta0 = (self.total_kcal_consumption - max_kcal * np.sum(pop[idx_upper])
-                         - beta1 * s1_x) / s1
-                y = np.zeros_like(x, dtype=float)
-                y[idx_lower] = beta0 + beta1 * x[idx_lower]
-                y[idx_upper] = max_kcal
-                y = np.clip(y, self.kcal_min, max_kcal)
-            else:
-                def total_kcal_diff(beta0):
-                    y = beta0 + beta1 * x
-                    y = np.clip(y, self.kcal_min, max_kcal)
-                    return np.sum(y * pop) - self.total_kcal_consumption
-
-                f_min = total_kcal_diff(beta0_min)
-                f_max = total_kcal_diff(beta0_max)
-                if f_min * f_max > 0:
-                    return None
-                beta0 = brentq(total_kcal_diff, beta0_min, beta0_max, xtol=self.epsilon)
-                y = beta0 + beta1 * x
-                y = np.clip(y, self.kcal_min, max_kcal)
-            return y
-
-        # First attempt with self.kcal_max; if needed, adjust max kcal.
-        y = calculate_distribution(self.kcal_max)
+        # If distribution is infeasible with current kcal_max, attempt a higher max
         if y is None or np.sum(y * self.pop_per_percentile) < self.total_kcal_consumption:
             warnings.warn("Raising kcal_max to 1820 due to excess calories.")
-            y = calculate_distribution(1820)
+            y = self._calc_linear_distribution_core(beta1, 1820)
 
+        # Fallback if still infeasible
         if y is None:
             warnings.warn("No valid distribution found; using fallback uniform distribution.")
             y = np.full(100, self.total_kcal_consumption / np.sum(self.pop_per_percentile))
 
+        # Check final total
         total = np.sum(y * self.pop_per_percentile)
         if abs(total - self.total_kcal_consumption) > self.epsilon * self.total_kcal_consumption:
             warnings.warn("Total kcal consumption does not match within epsilon after adjustments.")
         return y
+
+    def _calc_linear_distribution_core(self, beta1, max_kcal):
+        """
+        Core logic for linear distribution with a chosen max_kcal.
+        Returns an array of calorie values (length 100) or None if
+        bracketing fails.
+        """
+        beta0_min = self.kcal_min - beta1 * 100
+        beta0_max = max_kcal - beta1
+
+        total_min = self._total_calories(beta1, beta0_min, max_kcal)
+        total_max = self._total_calories(beta1, beta0_max, max_kcal)
+
+        # Case 1: If min-anchored distribution is too high
+        if total_min - self.total_kcal_consumption > self.epsilon * self.total_kcal_consumption:
+            return self._solve_lower_case(beta1, max_kcal)
+        # Case 2: If max-anchored distribution is too low
+        if self.total_kcal_consumption - total_max > self.epsilon * self.total_kcal_consumption:
+            return self._solve_upper_case(beta1, max_kcal)
+        # Case 3: Solve for beta0 via brentq
+        return self._solve_mid_case(beta1, beta0_min, beta0_max, max_kcal)
+
+    def _total_calories(self, beta1, beta0, max_kcal):
+        """
+        Returns total calories for a candidate beta0, clipped between
+        self.kcal_min and max_kcal.
+        """
+        x = self.percentiles
+        pop = self.pop_per_percentile
+        y = beta0 + beta1 * x
+        y = np.clip(y, self.kcal_min, max_kcal)
+        return np.sum(y * pop)
+
+    def _solve_lower_case(self, beta1, max_kcal):
+        """
+        Solve the 'too-high at min end' scenario by finding the percentile
+        c at which we switch from kcal_min to the linear formula.
+        Returns array of length 100 or None.
+        """
+        x = self.percentiles
+        pop = self.pop_per_percentile
+
+        def total_kcal_diff_lower(c):
+            idx_lower = x <= c
+            idx_upper = ~idx_lower
+            s2 = np.sum(pop[idx_upper])
+            s2_x = np.sum(pop[idx_upper] * x[idx_upper])
+            beta0 = (self.total_kcal_consumption
+                     - self.kcal_min * np.sum(pop[idx_lower])
+                     - beta1 * s2_x) / s2
+            y_upper = beta0 + beta1 * x[idx_upper]
+            y_upper = np.clip(y_upper, self.kcal_min, max_kcal)
+            return (self.kcal_min * np.sum(pop[idx_lower]) +
+                    np.sum(y_upper * pop[idx_upper]) -
+                    self.total_kcal_consumption)
+
+        c_opt = self._brentq_safe(total_kcal_diff_lower, 1, 99)
+        if c_opt is None:
+            return None
+
+        idx_lower = x <= c_opt
+        idx_upper = ~idx_lower
+        s2 = np.sum(pop[idx_upper])
+        s2_x = np.sum(pop[idx_upper] * x[idx_upper])
+        beta0 = (self.total_kcal_consumption
+                 - self.kcal_min * np.sum(pop[idx_lower])
+                 - beta1 * s2_x) / s2
+
+        y = np.full_like(x, self.kcal_min, dtype=float)
+        y[idx_upper] = beta0 + beta1 * x[idx_upper]
+        return np.clip(y, self.kcal_min, max_kcal)
+
+    def _solve_upper_case(self, beta1, max_kcal):
+        """
+        Solve the 'too-low at max end' scenario by finding the percentile
+        c at which we switch from linear formula to max_kcal.
+        Returns array of length 100 or None.
+        """
+        x = self.percentiles
+        pop = self.pop_per_percentile
+
+        def total_kcal_diff_upper(c):
+            idx_lower = x <= c
+            idx_upper = ~idx_lower
+            s1 = np.sum(pop[idx_lower])
+            s1_x = np.sum(pop[idx_lower] * x[idx_lower])
+            beta0 = (self.total_kcal_consumption
+                     - max_kcal * np.sum(pop[idx_upper])
+                     - beta1 * s1_x) / s1
+            y_lower = beta0 + beta1 * x[idx_lower]
+            y_lower = np.clip(y_lower, self.kcal_min, max_kcal)
+            return (np.sum(y_lower * pop[idx_lower]) +
+                    max_kcal * np.sum(pop[idx_upper]) -
+                    self.total_kcal_consumption)
+
+        c_opt = self._brentq_safe(total_kcal_diff_upper, 1, 99)
+        if c_opt is None:
+            return None
+
+        idx_lower = x <= c_opt
+        idx_upper = ~idx_lower
+        s1 = np.sum(pop[idx_lower])
+        s1_x = np.sum(pop[idx_lower] * x[idx_lower])
+        beta0 = (self.total_kcal_consumption
+                 - max_kcal * np.sum(pop[idx_upper])
+                 - beta1 * s1_x) / s1
+
+        y = np.full_like(x, max_kcal, dtype=float)
+        y[idx_lower] = beta0 + beta1 * x[idx_lower]
+        return np.clip(y, self.kcal_min, max_kcal)
+
+    def _solve_mid_case(self, beta1, beta0_min, beta0_max, max_kcal):
+        """
+        Solve the mid-range case where distribution can be set via brentq
+        directly on beta0.
+        Returns an array of length 100 or None if bracketing fails.
+        """
+        def total_kcal_diff(beta0):
+            return self._total_calories(beta1, beta0, max_kcal) - self.total_kcal_consumption
+
+        f_min = total_kcal_diff(beta0_min)
+        f_max = total_kcal_diff(beta0_max)
+        if f_min * f_max > 0:
+            return None  # No sign change, can't bracket root
+        beta0_opt = brentq(total_kcal_diff, beta0_min, beta0_max, xtol=self.epsilon)
+        x = self.percentiles
+        y = beta0_opt + beta1 * x
+        return np.clip(y, self.kcal_min, max_kcal)
+
+    def _brentq_safe(self, func, lower, upper):
+        """
+        Safely run brentq if the function at the endpoints bracket a root;
+        otherwise return None.
+        """
+        f_lower, f_upper = func(lower), func(upper)
+        if f_lower * f_upper > 0:
+            return None
+        return brentq(func, lower, upper, xtol=0.01)
 
     def piecewise_linear_distribution(self, beta1, c):
         """
@@ -292,6 +348,7 @@ class CalorieDistributor:
         weighted_offset = np.sum((c - x[idx_lower]) * pop[idx_lower])
         y_c = (self.total_kcal_consumption + beta1 * weighted_offset) / total_pop
 
+        # Enforce max and min constraints on the flat portion
         if y_c > self.kcal_max:
             y_c = self.kcal_max
             warnings.warn("y_c adjusted to kcal_max to satisfy kcal_max constraint.")
@@ -299,11 +356,14 @@ class CalorieDistributor:
             y_c = self.kcal_min
             warnings.warn("y_c adjusted to kcal_min to satisfy kcal_min constraint.")
 
+        # Recheck slope if we forced y_c to the boundaries
         y_min = y_c - beta1 * (c - np.min(x[idx_lower]))
         if y_min < self.kcal_min:
+            # Adjust slope so that lowest percentile is at kcal_min
             beta1 = (y_c - self.kcal_min) / (c - np.min(x[idx_lower]))
             warnings.warn("beta1 adjusted to satisfy kcal_min constraint at the lowest percentile.")
 
+        # Recompute y_c with updated beta1 if needed
         weighted_offset = np.sum((c - x[idx_lower]) * pop[idx_lower])
         y_c = (self.total_kcal_consumption + beta1 * weighted_offset) / total_pop
 
@@ -316,6 +376,7 @@ class CalorieDistributor:
         if abs(total - self.total_kcal_consumption) > self.epsilon * self.total_kcal_consumption:
             warnings.warn("Total kcal consumption does not match within epsilon after adjustments.")
         return y
+
 
 
 class BMIDistribution:
@@ -359,7 +420,8 @@ class BMIDistribution:
 
 def get_months_and_days(start_year, start_month, num_months):
     """
-    Return a list of tuples containing a month's timestamp and the number of days in that month.
+    Return a list of tuples containing a month's timestamp and 
+    the number of days in that month.
     """
     months_and_days = []
     current_date = pd.to_datetime(f'{start_year}-{start_month}-01')
@@ -378,7 +440,12 @@ if __name__ == "__main__":
     BMI_PREV = 20.0
     PERCENT_GRAIN = 0.7
 
-    deficit = calculate_energy_deficit(CEREAL_INTAKE, BMI_PREV, energy_requirements, PERCENT_GRAIN)
+    deficit = calculate_energy_deficit(
+        CEREAL_INTAKE,
+        BMI_PREV,
+        energy_requirements,
+        PERCENT_GRAIN
+    )
     bmi_new = update_bmi(deficit, BMI_PREV)
     print(f"Deficit: {deficit:.2f}")
     print(f"Previous BMI: {BMI_PREV}")
@@ -391,7 +458,12 @@ if __name__ == "__main__":
     BMI_PREV = 18.0
     PERCENT_GRAIN = 0.7
 
-    deficit = calculate_energy_deficit(CEREAL_INTAKE, BMI_PREV, energy_requirements, PERCENT_GRAIN)
+    deficit = calculate_energy_deficit(
+        CEREAL_INTAKE,
+        BMI_PREV,
+        energy_requirements,
+        PERCENT_GRAIN
+    )
     bmi_new = update_bmi(deficit, BMI_PREV)
     print(f"\nDeficit: {deficit:.2f}")
     print(f"Previous BMI: {BMI_PREV}")
@@ -402,7 +474,12 @@ if __name__ == "__main__":
     BMI_PREV = 14.0  # Extreme low BMI
     PERCENT_GRAIN = 0.7
 
-    deficit = calculate_energy_deficit(CEREAL_INTAKE, BMI_PREV, energy_requirements, PERCENT_GRAIN)
+    deficit = calculate_energy_deficit(
+        CEREAL_INTAKE,
+        BMI_PREV,
+        energy_requirements,
+        PERCENT_GRAIN
+    )
     bmi_new = update_bmi(deficit, BMI_PREV)
     mortality = calculate_excess_mortality(BMI_PREV)
     print(f"\nDeficit: {deficit:.2f}")

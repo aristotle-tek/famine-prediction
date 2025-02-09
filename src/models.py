@@ -91,9 +91,15 @@ class ResourceScarcityModel:
         })
 
         # Read population changes data
-        self.population_changes = pd.read_excel(self.data_file, sheet_name='population')
-        self.population_changes['month'] = pd.to_datetime(self.population_changes['month'], format='%m/%y')
-        self.monthly_total_consumption['month'] = pd.to_datetime(self.monthly_total_consumption['month'])
+        self.population_changes = pd.read_excel(
+            self.data_file, sheet_name='population'
+            )
+        self.population_changes['month'] = pd.to_datetime(
+            self.population_changes['month'], format='%m/%y'
+            )
+        self.monthly_total_consumption['month'] = pd.to_datetime(
+            self.monthly_total_consumption['month']
+            )
 
     def initialize_percentile_groups(self):
         """Initialize percentile-based population distribution."""
@@ -121,17 +127,26 @@ class ResourceScarcityModel:
         """Initialize the BMI distribution for the population."""
         bmi_init_method = self.config['bmi_init_method']
         if bmi_init_method == 'linear':
-            bmi_linear = BMIDistribution(method='linear', top_bmi=self.config['top_bmi'])
+            bmi_linear = BMIDistribution(
+                method='linear', top_bmi=self.config['top_bmi']
+                )
             self.bmi_init = bmi_linear.get_bmi_distribution()
         elif bmi_init_method == 'logarithmic':
-            bmi_logarithmic = BMIDistribution(method='logarithmic', 
-                    top_bmi=self.config['top_bmi']) #, bottom_bmi=18, alpha=0.9) could add these to config.
+            bmi_logarithmic = BMIDistribution(
+                method='logarithmic', 
+                top_bmi=self.config['top_bmi']
+                )
             self.bmi_init = bmi_logarithmic.get_bmi_distribution()
         elif bmi_init_method == 'reference':
-            bmi_reference = BMIDistribution(method='reference', data_file=self.data_file)
+            bmi_reference = BMIDistribution(
+                method='reference',
+                data_file=self.data_file
+                )
             self.bmi_init = bmi_reference.get_bmi_distribution()
         else:
-            raise ValueError("Invalid BMI method/not implemented. Choose 'linear' or 'reference'.")
+            raise ValueError(
+                "Invalid BMI method/not implemented. Choose 'linear' or 'reference'."
+                )
 
     def run_simulation(self):
         """Run the simulation for the specified number of months."""
@@ -165,21 +180,23 @@ class ResourceScarcityModel:
     def distribute_calories(self, i):
         """Distribute calories across the population."""
         pop_array = self.percentile_groups['pop'].values
-        
         curr_cal_config = {
             'pop_per_percentile': pop_array,
             'total_kcal_consumption': self.total_cons_kcal_per_day,
             'kcal_min': self.config['distrib_kcal_min'],
         }
         distributor = CalorieDistributor(curr_cal_config)
-        #distributor = CalorieDistributor(pop_array, self.total_cons_kcal_per_day,  kcal_min=self.config['distrib_kcal_min'])
         distrib_method = self.config['distrib_method']
         if distrib_method == 'linear':
             kcal_distrib = distributor.linear_distribution(beta1=self.config['distrib_beta1'])
         elif distrib_method == 'piecewise_linear':
-            kcal_distrib = distributor.piecewise_linear_distribution(beta1=self.config['distrib_beta1'], c=self.config['distrib_c'])
+            kcal_distrib = distributor.piecewise_linear_distribution(
+                beta1=self.config['distrib_beta1'], c=self.config['distrib_c']
+                )
         else:
-            raise ValueError("Distribution method not implemented. Choose 'linear' or 'piecewise_linear'.")
+            raise ValueError(
+                "Distribution method not implemented. Choose 'linear' or 'piecewise_linear'."
+                )
 
         self.percentile_groups['kcal_distrib'] = kcal_distrib
 
@@ -285,7 +302,8 @@ class ResourceScarcityModel:
             'total_deaths_due_to_bmi': self.total_deaths_due_to_bmi,
             'total_deaths_excess_mortality': self.total_deaths_excess_mortality,
             'natural_deaths': self.total_natural_deaths,
-            'total_deaths': self.total_deaths_due_to_bmi + self.total_deaths_excess_mortality + self.total_natural_deaths,
+            'total_deaths': self.total_deaths_due_to_bmi + 
+                self.total_deaths_excess_mortality + self.total_natural_deaths,
             'population': self.percentile_groups['pop'].sum()
         }
         self.monthly_values.append(monthly_record)
