@@ -183,7 +183,7 @@ class ResourceScarcityModel:
         curr_cal_config = {
             'pop_per_percentile': pop_array,
             'total_kcal_consumption': self.total_cons_kcal_per_day,
-            'kcal_min': self.config['distrib_kcal_min'],
+            'kcal_min': self.config['distrib_min_kcal'],
         }
         distributor = CalorieDistributor(curr_cal_config)
         distrib_method = self.config['distrib_method']
