@@ -7,7 +7,15 @@ from dateutil.relativedelta import relativedelta
 import numpy as np
 import pandas as pd
 
-from src.model_utils import energy_requirements, BMIDistribution, CalorieDistributor, calculate_energy_deficit, update_bmi, calculate_excess_mortality
+from src.model_utils import (
+    energy_requirements,
+    BMIDistribution,
+    CalorieDistributor,
+    calculate_energy_deficit,
+    update_bmi,
+    calculate_excess_mortality,
+    BMIFactors
+)
 
 
 class ResourceScarcityModel:
@@ -16,9 +24,14 @@ class ResourceScarcityModel:
     def __init__(self, config):
         """Initialize the model with a configuration dictionary."""
         self.config = config
-        self.factor_deficit = self.config['factor_deficit']
-        self.factor_adj = self.config['factor_adj']
-        
+
+        # Create one BMIFactors object (from config file else use default)
+        self.bmi_factors = BMIFactors(
+            factor_deficit=self.config.get('factor_deficit', 0.091),
+            factor_adj=self.config.get('factor_adj', 3.41316),
+            recovery_factor=self.config.get('recovery_factor', 3.52)
+        )
+
         # Population and grain parameters
         self.total_pop = self.config['total_pop']
         self.grain_percentage = self.config['grain_percentage']
@@ -152,7 +165,14 @@ class ResourceScarcityModel:
     def distribute_calories(self, i):
         """Distribute calories across the population."""
         pop_array = self.percentile_groups['pop'].values
-        distributor = CalorieDistributor(pop_array, self.total_cons_kcal_per_day,  kcal_min=self.config['distrib_kcal_min'])
+        
+        curr_cal_config = {
+            'pop_per_percentile': pop_array,
+            'total_kcal_consumption': self.total_cons_kcal_per_day,
+            'kcal_min': self.config['distrib_kcal_min'],
+        }
+        distributor = CalorieDistributor(curr_cal_config)
+        #distributor = CalorieDistributor(pop_array, self.total_cons_kcal_per_day,  kcal_min=self.config['distrib_kcal_min'])
         distrib_method = self.config['distrib_method']
         if distrib_method == 'linear':
             kcal_distrib = distributor.linear_distribution(beta1=self.config['distrib_beta1'])
@@ -187,11 +207,11 @@ class ResourceScarcityModel:
                 energy_deficit=row['deficit'],
                 previous_bmi=row['bmi'],
                 recovery=False,
-                factor_deficit=self.factor_deficit,
-                factor_adj=self.factor_adj
+                factors=self.bmi_factors  # single object now
             ),
             axis=1
         )
+
 
     def calculate_mortality(self):
         """Calculate the mortality due to BMI and excess mortality."""
