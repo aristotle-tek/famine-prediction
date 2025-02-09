@@ -1,3 +1,5 @@
+""" Utilities to test for stationarity of a series. """
+
 from statsmodels.tsa.stattools import adfuller, kpss
 
 

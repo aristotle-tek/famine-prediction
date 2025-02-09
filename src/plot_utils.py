@@ -1,3 +1,5 @@
+""" Plotting utilities, currently for the resource scarcity model."""
+
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt

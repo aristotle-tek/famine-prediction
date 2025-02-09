@@ -1,57 +1,80 @@
+""" Currently includes the (modified) Clingendael-style resource scarcity model."""
+
 import warnings
+from pathlib import Path
 import numpy as np
 import pandas as pd
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
-from pathlib import Path
+
 from src.model_utils import energy_requirements, BMIDistribution, CalorieDistributor, calculate_energy_deficit, update_bmi, calculate_excess_mortality
 
 
-
 class ResourceScarcityModel:
+    """A model to simulate resource scarcity effects on a population."""
+
     def __init__(self, config):
+        """Initialize the model with a configuration dictionary."""
         self.config = config
-        self.initialize_simulation()
-        self.percentile_values = []
         self.factor_deficit = self.config['factor_deficit']
         self.factor_adj = self.config['factor_adj']
-
-    def initialize_simulation(self):
-        # Base path and data file
-        self.base_path = Path.cwd()
-        self.data_file = self.base_path / 'data' / 'processed' / 'Combined_2024-10-30.xlsx'
-
-        # ref data
-        self.ref_data = pd.read_excel(self.data_file, sheet_name='Sc4')
-        self.ref_data['month'] = pd.to_datetime(self.ref_data['month-year'], format='%m/%y')
-        #if self.config['monthly_total_demand'] is None:
-            # load from the 'consumption column of the ref data
-
+        
         # Population and grain parameters
         self.total_pop = self.config['total_pop']
         self.grain_percentage = self.config['grain_percentage']
-        self.grain_stock = [x * self.config['grain_multiplier'] for x in self.config['grain_stock'] ]
+        self.grain_stock = [
+            x * self.config['grain_multiplier'] for x in self.config['grain_stock']
+        ]
 
-        # Time parameters
+        # Initialize simulation data
+        self.current_stock = 0
+        self.monthly_values = []
+        self.percentile_values = []
+        self.months_and_days = []
+        self.months = []
+        self.days_p_month = []
+
+        self.initialize_simulation()
+        self.initialize_bmi_distribution()
+        self.initialize_percentile_groups()
+
+    def initialize_simulation(self):
+        """Load simulation data and parameters from files."""
+        self.base_path = Path.cwd()
+        self.data_file = self.base_path / 'data' / 'processed' / 'Combined_2024-10-30.xlsx'
+
+        # Load ref data
+        self.ref_data = pd.read_excel(self.data_file, sheet_name='Sc4')
+        self.ref_data['month'] = pd.to_datetime(self.ref_data['month-year'], format='%m/%y')
+
+        # Time config
         self.months_and_days = self.get_months_and_days(
             self.config['start_year'],
             self.config['start_month'],
             self.config['num_months']
         )
-        self.months = [month for month, days in self.months_and_days]
-        self.days_p_month = [days for month, days in self.months_and_days]
+        self.months = [m for m, _ in self.months_and_days]
+        self.days_p_month = [d for _, d in self.months_and_days]
 
-        # Monthly total consumption (* grain_multiplier for sensitivity analysis)
+        # Monthly total consumption
         self.monthly_total_consumption = pd.DataFrame({
             'month': self.months,
-            'total_demand': [demand * self.config['grain_multiplier'] for demand in self.config['monthly_total_demand']]
+            'total_demand': [
+                demand * self.config['grain_multiplier']
+                for demand in self.config['monthly_total_demand']
+            ]
         })
 
-        self.initialize_bmi_distribution()
+        # Read population changes data
+        self.population_changes = pd.read_excel(self.data_file, sheet_name='population')
+        self.population_changes['month'] = pd.to_datetime(self.population_changes['month'], format='%m/%y')
+        self.monthly_total_consumption['month'] = pd.to_datetime(self.monthly_total_consumption['month'])
 
-        # Initialize percentile groups
+    def initialize_percentile_groups(self):
+        """Initialize percentile-based population distribution."""
         percentiles = np.arange(1, 101)
         pop_per_group = self.total_pop / 100  # 1% per group
+
         self.percentile_groups = pd.DataFrame({
             'percentile': percentiles,
             'bmi': self.bmi_init,
@@ -59,18 +82,8 @@ class ResourceScarcityModel:
             'alive': True
         })
 
-        # Other initializations
-        self.current_stock = 0
-        self.monthly_values = []
-
-        # Read population changes data
-        self.population_changes = pd.read_excel(self.data_file, sheet_name='population')
-        # Convert 'month' column to datetime
-        self.population_changes['month'] = pd.to_datetime(self.population_changes['month'], format='%m/%y')
-        # Ensure months in simulation are datetime objects
-        self.monthly_total_consumption['month'] = pd.to_datetime(self.monthly_total_consumption['month'])
-
     def get_months_and_days(self, start_year, start_month, num_months):
+        """Get the months and days for the simulation."""
         months_and_days = []
         start_date = datetime(start_year, start_month, 1)
         for i in range(num_months):
@@ -80,6 +93,7 @@ class ResourceScarcityModel:
         return months_and_days
 
     def initialize_bmi_distribution(self):
+        """Initialize the BMI distribution for the population."""
         bmi_init_method = self.config['bmi_init_method']
         if bmi_init_method == 'linear':
             bmi_linear = BMIDistribution(method='linear', top_bmi=self.config['top_bmi'])
@@ -95,11 +109,13 @@ class ResourceScarcityModel:
             raise ValueError("Invalid BMI method/not implemented. Choose 'linear' or 'reference'.")
 
     def run_simulation(self):
+        """Run the simulation for the specified number of months."""
         for i, month in enumerate(self.months):
             print(f"Processing month: {month.strftime('%Y-%m')}")
             self.process_month(i, month)
 
     def process_month(self, i, month):
+        """Process the simulation for a single month."""
         self.update_grain_stock(i)
         self.calculate_total_calories(i, month)
         self.distribute_calories(i)
@@ -110,16 +126,19 @@ class ResourceScarcityModel:
         self.record_percentile_values(i, month)
 
     def update_grain_stock(self, i):
+        """Update the grain stock for the current month."""
         self.monthly_input = self.grain_stock[i]
         self.total_available = self.current_stock + self.monthly_input
 
     def calculate_total_calories(self, i, month):
+        """Calculate the total calories available and consumed per day."""
         total_supply_consume_this_month = self.monthly_total_consumption.loc[
             self.monthly_total_consumption['month'] == month, 'total_demand'].values[0]
         self.total_calories_this_month = total_supply_consume_this_month * self.config['calories_per_metric_ton']
         self.total_cons_kcal_per_day = self.total_calories_this_month / self.days_p_month[i]
 
     def distribute_calories(self, i):
+        """Distribute calories across the population."""
         pop_array = self.percentile_groups['pop'].values
         distributor = CalorieDistributor(pop_array, self.total_cons_kcal_per_day,  kcal_min=self.config['distrib_kcal_min'])
         distrib_method = self.config['distrib_method']
@@ -138,6 +157,7 @@ class ResourceScarcityModel:
         self.current_stock = self.closing_stock
 
     def update_bmi_values(self):
+        """Update the BMI values for the population."""
         alive_mask = self.percentile_groups['alive']
 
         self.percentile_groups.loc[alive_mask, 'deficit'] = self.percentile_groups.loc[alive_mask].apply(
@@ -162,6 +182,7 @@ class ResourceScarcityModel:
         )
 
     def calculate_mortality(self):
+        """Calculate the mortality due to BMI and excess mortality."""
         critical_bmi = self.config['critical_bmi']
         dead_mask = self.percentile_groups['bmi'] <= critical_bmi
         deaths_due_to_bmi = self.percentile_groups.loc[dead_mask, 'pop'].sum()
@@ -221,6 +242,7 @@ class ResourceScarcityModel:
         self.total_natural_deaths = natural_deaths
 
     def record_monthly_values(self, i, month):
+        """Record the monthly values for the simulation."""
         monthly_record = {
             'month': month,
             'opening_stock': self.total_available,
@@ -237,13 +259,16 @@ class ResourceScarcityModel:
         self.monthly_values.append(monthly_record)
 
     def get_results(self):
+        """Return the simulation results as a DataFrame."""
         return pd.DataFrame(self.monthly_values)
 
     def record_percentile_values(self, i, month):
+        """Record the percentile values for the simulation."""
         percentile_data = self.percentile_groups.copy()
         percentile_data['month'] = month
         self.percentile_values.append(percentile_data)
 
     def get_percentile_data(self):
+        """Return the percentile data as a DataFrame."""
         return pd.concat(self.percentile_values, ignore_index=True)
 

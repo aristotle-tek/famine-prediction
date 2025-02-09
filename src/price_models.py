@@ -1,6 +1,5 @@
-
 """
-Basic approach follows Baquedano et al. for price anomaly detection:
+Currently includes functions to follow the Baquedano approach to price anomaly detection:
 "Developing an indicator of price anomalies as an early warning tool: A compound growth approach"
 Felix G. Baquedano. FAO, Rome, 2015.
 """

@@ -1,3 +1,7 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+""" Utilities for the Resource dependency model."""
+
 import math
 import numpy as np
 import pandas as pd
@@ -7,7 +11,10 @@ from scipy.optimize import brentq
 
 
 def load_config(file_path):
-    with open(file_path, 'r') as file:
+    """
+    Load a configuration file in JSON format.
+    """
+    with open(file_path, 'r', encoding='utf-8') as file:
         config = json.load(file)
     return config
 
@@ -19,24 +26,24 @@ energy_requirements = {
     "BMI ≥ 18.5 kg/m²": 2200
 }
 
-def calculate_energy_deficit(cereal_intake, bmi, energy_requirements, percent_grain=0.7):
+def calculate_energy_deficit(intake_kcal, bmi, energy_req_dict, grain_fraction=0.7):
     """
     Calculate the energy deficit or surplus as a fraction of the energy requirement.
 
     Args:
-        cereal_intake (float): The cereal intake in kcal (must be positive).
+        intake_kcal (float): The cereal intake in kcal (must be positive).
         bmi (float): The current BMI of the individual.
-        energy_requirements (dict): A dictionary of energy requirements based on BMI categories.
-        percent_grain (float): The percentage of calories from grains (must be between 0 and 1, default is 0.7).
+        energy_req_dict (dict): A dictionary of energy requirements based on BMI categories.
+        grain_fraction (float): The percentage of calories from grains (must be between 0 and 1, default is 0.7).
 
     Returns:
         float: The energy deficit (positive for deficit, negative for surplus) as a fraction of the energy requirement.
     """
-    # Input validation
-    if not isinstance(cereal_intake, (int, float, np.int64, np.float64)) or cereal_intake <= 0:
+   # Input validation
+    if not isinstance(intake_kcal, (int, float, np.int64, np.float64)) or intake_kcal <= 0:
         raise ValueError("Cereal intake must be a positive number.")
 
-    if not (bmi <= 60):
+    if not bmi <= 60:
         raise ValueError("BMI should not exceed 60.")
     #if not (10 <= bmi <= 60):
     #    raise ValueError("BMI should be in the range of 10 to 60.")
@@ -44,7 +51,7 @@ def calculate_energy_deficit(cereal_intake, bmi, energy_requirements, percent_gr
     if bmi < 15 or bmi > 30:
         warnings.warn("Warning: extreme values of BMI (<15 or >30).")
 
-    if not isinstance(percent_grain, (int, float)) or not (0 < percent_grain <= 1):
+    if not isinstance(grain_fraction, (int, float)) or not 0 < grain_fraction <= 1:
         raise ValueError("Percent grain must be a number between 0 and 1.")
 
     # Validate energy requirements dictionary
@@ -53,7 +60,7 @@ def calculate_energy_deficit(cereal_intake, bmi, energy_requirements, percent_gr
         "15 ≤ BMI < 18.5 kg/m²",
         "BMI ≥ 18.5 kg/m²"
     ]
-    if not all(category in energy_requirements for category in required_bmi_categories):
+    if not all(category in energy_req_dict for category in required_bmi_categories):
         raise ValueError("The energy requirements dictionary must contain all required BMI categories.")
 
     # Determine BMI category
@@ -65,23 +72,23 @@ def calculate_energy_deficit(cereal_intake, bmi, energy_requirements, percent_gr
         bmi_category = "BMI ≥ 18.5 kg/m²"
 
     # Calculate energy requirement and intake
-    energy_requirement = energy_requirements[bmi_category]
-    energy_intake = cereal_intake / percent_grain
+    energy_requirement = energy_req_dict[bmi_category]
+    energy_intake = intake_kcal / grain_fraction
 
     # Calculate energy deficit or surplus fraction
-    deficit = min((energy_requirement - energy_intake) / energy_requirement, 1.0) # Positive for deficit, negative for surplus, max 100%
+    deficit_or_surplus = min((energy_requirement - energy_intake) / energy_requirement, 1.0) # Positive for deficit, negative for surplus, max 100%
 
-    return deficit
+    return deficit_or_surplus
 
 
 
-def update_bmi(deficit, bmi_prev, recovery=False, factor_deficit=0.091, factor_adj=3.41316, recovery_factor=3.52):
+def update_bmi(energy_deficit, previous_bmi, recovery=False, factor_deficit=0.091, factor_adj=3.41316, recovery_factor=3.52):
     """
     Calculate the updated BMI based on energy deficit/surplus and previous BMI.
 
     Args:
-        deficit (float): Energy deficit (positive for deficit, negative for surplus) as a fraction of the energy requirement.
-        bmi_prev (float): The BMI of the previous month.
+        energy_deficit (float): Energy deficit (positive for deficit, negative for surplus) as a fraction of the energy requirement.
+        previous_bmi (float): The BMI of the previous month.
         recovery (bool): whether in recovery
         factor_deficit (float): Coefficient for BMI adjustment during deficit (0.0914 or 0.096).
         recovery_factor (float): Coefficient for BMI adjustment during recovery
@@ -90,12 +97,12 @@ def update_bmi(deficit, bmi_prev, recovery=False, factor_deficit=0.091, factor_a
         float: The updated BMI for the current month.
     """
     # Input validation
-    if not isinstance(deficit, (int, float)):
+    if not isinstance(energy_deficit, (int, float)):
         raise ValueError("Deficit must be a number.")
 
-    # if not (10 <= bmi_prev <= 60):
+    # if not (10 <= previous_bmi <= 60):
     #     raise ValueError("The previous BMI should be in the range of 10 to 60.")
-    if not (bmi_prev <= 60):
+    if not previous_bmi <= 60:
         raise ValueError("The previous BMI should not exceed 60.")
 
 
@@ -105,15 +112,15 @@ def update_bmi(deficit, bmi_prev, recovery=False, factor_deficit=0.091, factor_a
     # Adjust BMI based on deficit or surplus
     if recovery:
         # Recovery (surplus) case
-        delta_bmi = (recovery_factor * deficit) - (factor_deficit * (22 - bmi_prev))
+        delta_bmi = (recovery_factor * energy_deficit) - (factor_deficit * (22 - previous_bmi))
         # Cap the BMI increase at 1 unit
         #delta_bmi = min(delta_bmi, 1.0)
     else:
-        delta_bmi = (factor_adj * deficit) - (factor_deficit * (22 - bmi_prev))
+        delta_bmi = (factor_adj * energy_deficit) - (factor_deficit * (22 - previous_bmi))
 
-    bmi_new = bmi_prev - delta_bmi
+    new_bmi = previous_bmi - delta_bmi
 
-    return bmi_new
+    return new_bmi
 
 
 def calculate_excess_mortality(BMIt_minus_1):
@@ -138,11 +145,10 @@ def calculate_excess_mortality(BMIt_minus_1):
     """
     if BMIt_minus_1 >= 18.5:
         return 0.0
-    else:
-        #excess_mortality = 0.00023 * math.exp((18.5 - BMIt_minus_1) ** 1.36)
-        excess_mortality = 0.00028 * math.exp((18.5 - BMIt_minus_1) ** 1.33)
-        # mortality = percent, so don't return higher than 1.0:
-        return min(excess_mortality, 1.0)
+    #excess_mortality = 0.00023 * math.exp((18.5 - BMIt_minus_1) ** 1.36)
+    excess_mortality = 0.00028 * math.exp((18.5 - BMIt_minus_1) ** 1.33)
+    # mortality = percent, so don't return higher than 1.0:
+    return min(excess_mortality, 1.0)
 
 
 class CalorieDistributor:
@@ -165,8 +171,6 @@ class CalorieDistributor:
         def calculate_distribution(kcal_max):
             pop = self.pop_per_percentile
             x = self.percentiles  # x_i from 1 to 100
-            S_p = np.sum(pop)
-            S_p_x = np.sum(pop * x)
 
             # Calculate beta0 range based on kcal_min and kcal_max constraints
             beta0_min = self.kcal_min - beta1 * 100
