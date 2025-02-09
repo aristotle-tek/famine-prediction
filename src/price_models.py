@@ -5,7 +5,6 @@ Felix G. Baquedano. FAO, Rome, 2015.
 """
 
 import numpy as np
-import pandas as pd
 
 def compute_cgr(series, window):
     r"""
@@ -140,8 +139,7 @@ def classify_anomaly(score):
         return "Price Alert"
     elif score >= 0.5:
         return "Price Watch"
-    else:
-        return "Normal"
+    return "Normal"
 
 def compute_gamma(vcqgr_series, vcagr_series):
     r"""
@@ -204,7 +202,6 @@ def handle_missing_data(series, method='interpolate', **kwargs):
         return series.fillna(method='bfill', **kwargs)
     elif method == 'drop':
         return series.dropna()
-    else:
-        raise ValueError("Unsupported method. Choose 'interpolate', 'ffill', 'bfill', or 'drop'.")
+    raise ValueError("Unsupported method. Choose 'interpolate', 'ffill', 'bfill', or 'drop'.")
     
 

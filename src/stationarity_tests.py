@@ -3,21 +3,21 @@
 from statsmodels.tsa.stattools import adfuller, kpss
 
 
-import_warning = None
-pp_import_warning = None
+IMPORT_WARNING = None
+PP_IMPORT_WARNING = None
 
 try:
     from arch.unitroot import DFGLS
 except ImportError as exc:
     DFGLS = None
-    import_warning = exc  # Store orig exception for later reference
+    IMPORT_WARNING = exc  # Store orig exception for later reference
 
 
 try:
     from arch.unitroot import PhillipsPerron
 except ImportError as exc:
     PhillipsPerron = None
-    pp_import_warning = exc
+    PP_IMPORT_WARNING = exc
 
 def test_adf(series, regression='ct', autolag='AIC'):
     """
@@ -74,7 +74,7 @@ def test_pp(series, trend='ct', **kwargs):
         ImportError: If the 'arch' package is not installed.
     """
     if PhillipsPerron is None:
-        raise ImportError("Phillips-Perron test requires the 'arch' package. Install it via pip.") from pp_import_warning
+        raise ImportError("Phillips-Perron test requires the 'arch' package. Install it via pip.") from PP_IMPORT_WARNING
 
     series_clean = series.dropna()
     if series_clean.empty:
@@ -108,7 +108,7 @@ def test_dfgls(series, trend='ct', **kwargs):
         ImportError: If the 'arch' package is not installed.
     """
     if DFGLS is None:
-        raise ImportError("DFGLS test requires the 'arch' package. Please install it via pip.") from import_warning
+        raise ImportError("DFGLS test requires the 'arch' package. Please install it via pip.") from IMPORT_WARNING
     series_clean = series.dropna()
     if series_clean.empty:
         raise ValueError("Input time series is empty after dropping NaN values.")

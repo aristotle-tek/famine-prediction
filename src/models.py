@@ -38,6 +38,18 @@ class ResourceScarcityModel:
         self.initialize_bmi_distribution()
         self.initialize_percentile_groups()
 
+        # Predefine attributes that are later set in various methods.
+        self.monthly_input = 0
+        self.total_available = 0
+        self.total_calories_this_month = 0
+        self.total_cons_kcal_per_day = 0
+        self.consumption = 0
+        self.closing_stock = 0
+        self.total_deaths_excess_mortality = 0
+        self.total_deaths_due_to_bmi = 0
+        self.total_deaths = 0
+        self.total_natural_deaths = 0
+
     def initialize_simulation(self):
         """Load simulation data and parameters from files."""
         self.base_path = Path.cwd()
@@ -121,9 +133,9 @@ class ResourceScarcityModel:
         self.distribute_calories(i)
         self.update_bmi_values()
         self.calculate_mortality()
-        self.update_population(i, month)
-        self.record_monthly_values(i, month)
-        self.record_percentile_values(i, month)
+        self.update_population(month)
+        self.record_monthly_values(month)
+        self.record_percentile_values(month)
 
     def update_grain_stock(self, i):
         """Update the grain stock for the current month."""
@@ -205,7 +217,7 @@ class ResourceScarcityModel:
         self.total_deaths_due_to_bmi = deaths_due_to_bmi
         self.total_deaths = self.total_deaths_due_to_bmi + self.total_deaths_excess_mortality
 
-    def update_population(self, i, month):
+    def update_population(self, month):
         # Get the population changes for the current month
         month_population_changes = self.population_changes[self.population_changes['month'] == month]
 
@@ -241,7 +253,7 @@ class ResourceScarcityModel:
         # Record natural deaths
         self.total_natural_deaths = natural_deaths
 
-    def record_monthly_values(self, i, month):
+    def record_monthly_values(self, month):
         """Record the monthly values for the simulation."""
         monthly_record = {
             'month': month,
@@ -262,7 +274,7 @@ class ResourceScarcityModel:
         """Return the simulation results as a DataFrame."""
         return pd.DataFrame(self.monthly_values)
 
-    def record_percentile_values(self, i, month):
+    def record_percentile_values(self, month):
         """Record the percentile values for the simulation."""
         percentile_data = self.percentile_groups.copy()
         percentile_data['month'] = month
