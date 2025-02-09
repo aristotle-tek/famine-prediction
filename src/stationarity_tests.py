@@ -1,5 +1,9 @@
 from statsmodels.tsa.stattools import adfuller, kpss
 
+
+import_warning = None
+pp_import_warning = None
+
 try:
     from arch.unitroot import DFGLS
 except ImportError as exc:
