@@ -7,6 +7,7 @@ Felix G. Baquedano. FAO, Rome, 2015.
 """
 
 import numpy as np
+import pandas as pd
 
 def compute_cgr(series, window):
     r"""
@@ -26,6 +27,8 @@ def compute_cgr(series, window):
       
     Returns:
       pd.Series: The rolling CGR with NaN for periods with insufficient data.
+        to do -- handling zeros or near-zeros (returns NaN if x[0] == 0).
+
     """
     return series.rolling(window).apply(
         lambda x: np.nan if x[0] == 0 else (x[-1] / x[0])**(1/window) - 1, raw=True
@@ -50,6 +53,7 @@ def compute_volatility(series, window):
     log_diff = log_series.diff()
     return log_diff.rolling(window).std()
 
+
 def adjust_cgr_for_volatility(cgr_series, vol_series):
     r"""
     Adjust the compound growth rate (CGR) for volatility.
@@ -70,7 +74,12 @@ def adjust_cgr_for_volatility(cgr_series, vol_series):
     Returns:
       pd.Series: The volatility-adjusted CGR (vCGR).
     """
+    # ensure volatility is within [0, 1]
+    if (vol_series < 0).any() or (vol_series > 1).any():
+        raise ValueError("volatility values must be between 0 and 1")
+    
     return cgr_series * (1 - vol_series)
+
 
 def weighted_mean(values, weights):
     r"""
@@ -90,25 +99,26 @@ def weighted_mean(values, weights):
     """
     return np.sum(values * weights) / np.sum(weights)
 
-def weighted_std(values, weights):
-    r"""
-    Compute the weighted standard deviation.
 
-    Baquedano (2015) Equation (5):
-    \hat{\sigma}_{vCGR,Wt} = 
-      \sqrt{\frac{\sum_{y=1}^\gamma w_y (vCGR_{yt} -
-      \overline{vCGR}_{Wt})^2}{\sum_{y=1}^\gamma w_y (\gamma-1)/\gamma}}
-    
-    Parameters:
-      values (np.array): Array of values.
-      weights (np.array): Array of weights.
-      
-    Returns:
-      float: The weighted standard deviation.
+def weighted_std(values, weights):
+    """
+    Compute the weighted standard deviation of values
+    as in Baquedano (2015) Equation (5).
+
+    Equation (5):
+    σ̂_{vCGR,Wt} = sqrt(
+        (Σ wₐ [vCGRᵧt −  vCGR̅_{Wt}]²) / 
+        (Σ wᵧ × ((γ−1)/γ))
+    )
+
+    where γ is the number of observations.
     """
     mean_val = weighted_mean(values, weights)
-    N = len(values)
-    return np.sqrt(np.sum(weights * (values - mean_val)**2) / (np.sum(weights) * ((N - 1) / N)))
+    gamma = len(values)  # number of data points
+    numerator = np.sum(weights * (values - mean_val)**2)
+    denominator = np.sum(weights) * ((gamma - 1) / gamma)
+    return np.sqrt(numerator / denominator)
+
 
 def compute_anomaly_score(vcgr, w_mean, w_std):
     r"""
@@ -155,29 +165,62 @@ def classify_anomaly(score):
 
 def compute_gamma(vcqgr_series, vcagr_series):
     r"""
-    Compute the weight $\gamma$, determining the relative 
-    importance of the quarterly and annual signals.
+    Compute the weight γ, determining the relative importance of the
+    quarterly and annual signals via PCA on their covariance matrix.
 
-    Baquedano (2015):
-    
-    "A critical component of the IPA_t is the value of \gamma. 
-    ... The PCA allows us to calculate the eigenvalues 
-    for both of these compound growth rates.
-    The ratio of each eigenvalue to the sum of the variances
-    gives us the value for \gamma."
-    
-    Parameters:
-      vcqgr_series (pd.Series or np.array): Volatility-adjusted quarterly CGR.
-      vcagr_series (pd.Series or np.array): Volatility-adjusted annual CGR.
-      
-    Returns:
-      float: The computed $\gamma$.
+    Baquedano (2015) notes:
+      "The PCA allows us to calculate the eigenvalues for both of
+       these compound growth rates. The ratio of each eigenvalue to
+       the sum of the variances gives us the value for γ."
+
+      1. Drop any NaNs and align the two series.
+      2. Build the 2×2 population covariance matrix.
+      3. Compute its two (real, ≥0) eigenvalues λ₁, λ₂.
+      4. Return γ = λ₁ / (λ₁ + λ₂), i.e. the proportion of total variance
+         explained by the first principal component.
+      5. If λ₁+λ₂ == 0 (no variability), return 0.5.
+
+    Parameters
+    ----------
+    vcqgr_series : pd.Series or np.ndarray
+        Volatility‐adjusted quarterly CGR.
+    vcagr_series : pd.Series or np.ndarray
+        Volatility‐adjusted annual CGR.
+
+    Returns
+    -------
+    float
+        The computed γ ∈ [0, 1].
     """
-    var_q = np.nanvar(vcqgr_series)
-    var_a = np.nanvar(vcagr_series)
-    if (var_q + var_a) == 0:
-        return 0.5  # default to equal weighting if both variances are zero
-    return var_q / (var_q + var_a)
+
+    # can drop NaNs and align indexes easier with series
+    s_q = pd.Series(vcqgr_series).dropna()
+    s_a = pd.Series(vcagr_series).dropna()
+
+    # Align on their common index; if they were arrays, this just truncates to min length
+    df = pd.concat([s_q, s_a], axis=1, join="inner")
+    if df.shape[0] < 2:
+        # too few points to estimate a covariance → equal weight
+        return 0.5
+
+    # extract as 2×N array (rows = variables, cols = observations)
+    data = df.values.T
+
+    # calc 2×2 population covariance matrix (bias=True → divide by N)
+    cov = np.cov(data, bias=True)
+
+    # for a symm matrix we can use eigvalsh (returns ascending)
+    eigs = np.linalg.eigvalsh(cov)
+
+    # order descending and sum
+    eigs = np.sort(eigs)[::-1]
+    total = eigs.sum()
+
+    if total <= 0:
+        return 0.5
+
+    gamma = eigs[0] / total
+    return float(gamma)
 
 def combine_signals(ipa_quarterly, ipa_annual, gamma):
     r"""
