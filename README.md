@@ -54,7 +54,7 @@ We provide several Jupyter notebooks to walk through the main calculations:
 5. [Simple sensitivity analysis of the model](notebooks/sensitivity.ipynb)  
     Or [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/aristotle-tek/famine-prediction/blob/main/notebooks/sensitivity.ipynb)
     Evaluate the relative importance of five inputs using Sobol indices.
-
+    For a narrative overview, see [here](https://theoryandaction.substack.com/p/famine-what-i-learned-from-coding).
 
 ## Price Anomaly Early Warning Model - Start here
 

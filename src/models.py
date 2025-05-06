@@ -14,8 +14,10 @@ from src.model_utils import (
     calculate_energy_deficit,
     update_bmi,
     calculate_excess_mortality,
-    BMIFactors
+    BMIFactors,
+    get_months_and_days
 )
+
 
 
 class ResourceScarcityModel:
@@ -113,15 +115,6 @@ class ResourceScarcityModel:
             'alive': True
         })
 
-    def get_months_and_days(self, start_year, start_month, num_months):
-        """Get the months and days for the simulation."""
-        months_and_days = []
-        start_date = datetime(start_year, start_month, 1)
-        for i in range(num_months):
-            month_date = start_date + relativedelta(months=i)
-            days_in_month = (month_date + relativedelta(months=1) - month_date).days
-            months_and_days.append((month_date, days_in_month))
-        return months_and_days
 
     def initialize_bmi_distribution(self):
         """Initialize the BMI distribution for the population."""
