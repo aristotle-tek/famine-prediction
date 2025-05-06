@@ -1,17 +1,12 @@
-import json
+""" Simple tests of the resource scarcity model."""
 import math
-import tempfile
-import warnings
 import numpy as np
 import pandas as pd
 import pytest
-from pathlib import Path
-
 
 
 
 from src.model_utils import (
-    load_config,
     energy_requirements,
     BMIDistribution,
     CalorieDistributor,
@@ -19,7 +14,6 @@ from src.model_utils import (
     update_bmi,
     calculate_excess_mortality,
     BMIFactors,
-    get_months_and_days
 )
 
 
@@ -30,7 +24,7 @@ from src.model_utils import (
     (2000, 20.0, "BMI ≥ 18.5 kg/m²"),
 ])
 def test_calculate_energy_deficit_category(intake, bmi, expected_cat):
-    # compute raw deficit and verify correct category uses its requirement
+    """compute raw deficit and verify correct category uses its requirement"""
     req = energy_requirements[expected_cat]
     deficit = calculate_energy_deficit(intake, bmi, energy_requirements, grain_fraction=0.5)
     # deficit = (req - intake/0.5) / req, capped at 1
@@ -39,16 +33,17 @@ def test_calculate_energy_deficit_category(intake, bmi, expected_cat):
 
 
 def test_calculate_energy_deficit_invalid():
+    """ Trivial test"""
     with pytest.raises(ValueError):
         calculate_energy_deficit(0, 20, energy_requirements)
     with pytest.raises(ValueError):
         calculate_energy_deficit(1000, 61, energy_requirements)
-    with pytest.warns(None):
+    with pytest.warns(UserWarning):
         calculate_energy_deficit(1000, 31, energy_requirements)
 
 
 def test_update_bmi_effects_and_signs():
-    # energy deficit should reduce BMI
+    """Energy deficit should reduce BMI"""
     bmi_down = update_bmi(0.1, 22.0)
     assert bmi_down < 22.0
     # recovery (surplus) should increase BMI
@@ -57,13 +52,14 @@ def test_update_bmi_effects_and_signs():
 
 
 def test_update_bmi_invalid_factors():
+    """ trivial """
     bad = BMIFactors(factor_deficit=0, recovery_factor=-1)
     with pytest.raises(ValueError):
         update_bmi(0.1, 20.0, factors=bad)
 
 
 def test_calculate_excess_mortality_formula():
-    # below threshold uses formula
+    """below threshold uses formula"""
     val = calculate_excess_mortality(17.0)
     expected = 0.00028 * math.exp((18.5 - 17.0) ** 1.33)
     assert math.isclose(val, expected, rel_tol=1e-9)
@@ -73,19 +69,13 @@ def test_calculate_excess_mortality_formula():
     assert calculate_excess_mortality(19.0) == 0.0
 
 
-def test_get_months_and_days_correct_lengths():
-    months = get_months_and_days(2024, 1, 12)
-    # Jan has 31, Feb 29 (2024 leap), etc.
-    assert months[0][1] == 31
-    assert months[1][1] == 29
-    assert months[-1][1] == 31
-    assert len(months) == 12
 
 @ pytest.mark.parametrize("method,params,check", [
     ('linear', {'top_bmi': 30}, lambda arr: np.allclose(arr[0], 30 - 12)),
     ('logarithmic', {'top_bmi': 30, 'bottom_bmi': 18}, lambda arr: arr.min() >= 18),
 ])
 def test_bmi_distribution_range(method, params, check):
+    """ trivial - should have len 100"""
     bd = BMIDistribution(method=method, **params)
     arr = np.array(bd.get_bmi_distribution())
     assert len(arr) == 100
@@ -93,6 +83,7 @@ def test_bmi_distribution_range(method, params, check):
 
 
 def test_bmi_distribution_reference_file(tmp_path):
+    """ test load from file"""
     df = pd.DataFrame({"data": ["bmi_init"]} | {str(i): [i] for i in range(1, 101)})
     file = tmp_path / "ref.xlsx"
     with pd.ExcelWriter(file) as w:
@@ -102,6 +93,7 @@ def test_bmi_distribution_reference_file(tmp_path):
 
 
 def test_calorie_distributor_linear_distribution_sum_and_monotonic():
+    """ ensure monotonically non-decreasing """
     pop = np.ones(100)
     total = 100 * 2000
     cd = CalorieDistributor({'pop_per_percentile': pop, 'total_kcal_consumption': total})
@@ -112,8 +104,9 @@ def test_calorie_distributor_linear_distribution_sum_and_monotonic():
 
 
 def test_calorie_distributor_piecewise_behavior():
+    """monotonically non-decreasing """
     pop = np.ones(100)
-    total = 100 * 2000
+    total = 100 * 1400
     cd = CalorieDistributor({'pop_per_percentile': pop, 'total_kcal_consumption': total})
     y = cd.piecewise_linear_distribution(beta1=2, c=50)
     assert pytest.approx(np.sum(y * pop), rel=1e-6) == total

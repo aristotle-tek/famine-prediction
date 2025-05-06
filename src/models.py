@@ -2,8 +2,7 @@
 
 import warnings
 from pathlib import Path
-from datetime import datetime
-from dateutil.relativedelta import relativedelta
+# from dateutil.relativedelta import relativedelta
 import numpy as np
 import pandas as pd
 
@@ -75,7 +74,7 @@ class ResourceScarcityModel:
         self.ref_data['month'] = pd.to_datetime(self.ref_data['month-year'], format='%m/%y')
 
         # Time config
-        self.months_and_days = self.get_months_and_days(
+        self.months_and_days = get_months_and_days(
             self.config['start_year'],
             self.config['start_month'],
             self.config['num_months']
@@ -167,7 +166,8 @@ class ResourceScarcityModel:
         """Calculate the total calories available and consumed per day."""
         total_supply_consume_this_month = self.monthly_total_consumption.loc[
             self.monthly_total_consumption['month'] == month, 'total_demand'].values[0]
-        self.total_calories_this_month = total_supply_consume_this_month * self.config['calories_per_metric_ton']
+        self.total_calories_this_month = total_supply_consume_this_month * \
+            self.config['calories_per_metric_ton']
         self.total_cons_kcal_per_day = self.total_calories_this_month / self.days_p_month[i]
 
     def distribute_calories(self, i):
@@ -202,7 +202,8 @@ class ResourceScarcityModel:
         """Update the BMI values for the population."""
         alive_mask = self.percentile_groups['alive']
 
-        self.percentile_groups.loc[alive_mask, 'deficit'] = self.percentile_groups.loc[alive_mask].apply(
+        self.percentile_groups.loc[alive_mask, 'deficit'] = self.percentile_groups.loc[
+            alive_mask].apply(
             lambda row: calculate_energy_deficit(
                 intake_kcal=row['kcal_distrib'],
                 bmi=row['bmi'],
@@ -212,7 +213,8 @@ class ResourceScarcityModel:
             axis=1
         )
 
-        self.percentile_groups.loc[alive_mask, 'bmi'] = self.percentile_groups.loc[alive_mask].apply(
+        self.percentile_groups.loc[alive_mask, 'bmi'] = self.percentile_groups.loc[
+            alive_mask].apply(
             lambda row: update_bmi(
                 energy_deficit=row['deficit'],
                 previous_bmi=row['bmi'],
@@ -240,7 +242,8 @@ class ResourceScarcityModel:
             self.percentile_groups.loc[alive_mask, 'excess_mortality_rate'] * self.percentile_groups.loc[alive_mask, 'pop']
         )
 
-        self.percentile_groups.loc[alive_mask, 'pop'] -= self.percentile_groups.loc[alive_mask, 'deaths_excess_mortality']
+        self.percentile_groups.loc[alive_mask, 'pop'] -= self.percentile_groups.loc[
+            alive_mask, 'deaths_excess_mortality']
         self.percentile_groups.loc[self.percentile_groups['pop'] < 0, 'pop'] = 0
 
         self.total_deaths_excess_mortality = self.percentile_groups['deaths_excess_mortality'].sum()
@@ -249,7 +252,8 @@ class ResourceScarcityModel:
 
     def update_population(self, month):
         """ Get the population changes for the current month. """
-        month_population_changes = self.population_changes[self.population_changes['month'] == month]
+        month_population_changes = self.population_changes[
+            self.population_changes['month'] == month]
 
         if not month_population_changes.empty:
             # Get the values for births, natural_deaths, migration
@@ -257,7 +261,7 @@ class ResourceScarcityModel:
             natural_deaths = month_population_changes['deaths'].values[0]
             migration = month_population_changes['migration'].values[0]
         else:
-            warnings.warn(f"No population data found for month: {month.strftime('%Y-%m')}. Assuming no population changes.")
+            warnings.warn(f"No pop data found for month: {month.strftime('%Y-%m')}. Assuming no pop changes.")
             births = 0
             natural_deaths = 0
             migration = 0
@@ -314,4 +318,3 @@ class ResourceScarcityModel:
     def get_percentile_data(self):
         """Return the percentile data as a DataFrame."""
         return pd.concat(self.percentile_values, ignore_index=True)
-

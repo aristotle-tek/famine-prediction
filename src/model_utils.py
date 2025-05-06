@@ -83,6 +83,7 @@ def calculate_energy_deficit(intake_kcal, bmi, energy_req_dict, grain_fraction=0
 
 @dataclass(frozen=True)
 class BMIFactors:
+    """ default settings """
     factor_deficit: float = 0.091
     factor_adj: float = 3.41316
     recovery_factor: float = 3.52
@@ -377,8 +378,6 @@ class CalorieDistributor:
             warnings.warn("Total kcal consumption does not match within epsilon after adjustments.")
         return y
 
-
-
 class BMIDistribution:
     """
     Generate the initial BMI distribution using one of several methods.
@@ -415,7 +414,16 @@ class BMIDistribution:
         return relvalues[::-1]
 
     def get_bmi_distribution(self):
+        """ get initial vector of starting distribution"""
         return self.bmi_init
+
+    def describe(self):
+        """ get basic stats"""
+        return {
+            "min_bmi": np.min(self.bmi_init),
+            "max_bmi": np.max(self.bmi_init),
+            "mean_bmi": np.mean(self.bmi_init)
+        }
 
 
 def get_months_and_days(start_year, start_month, num_months):
@@ -486,4 +494,3 @@ if __name__ == "__main__":
     print(f"Previous BMI: {BMI_PREV}")
     print(f"Updated BMI: {bmi_new:.2f}")
     print(f"Excess mortality: {mortality:.2f}")
-

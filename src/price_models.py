@@ -77,7 +77,7 @@ def adjust_cgr_for_volatility(cgr_series, vol_series):
     # ensure volatility is within [0, 1]
     if (vol_series < 0).any() or (vol_series > 1).any():
         raise ValueError("volatility values must be between 0 and 1")
-    
+
     return cgr_series * (1 - vol_series)
 
 
@@ -262,5 +262,3 @@ def handle_missing_data(series, method='interpolate', **kwargs):
     if method == 'drop':
         return series.dropna()
     raise ValueError("Unsupported method. Choose 'interpolate', 'ffill', 'bfill', or 'drop'.")
-    
-
