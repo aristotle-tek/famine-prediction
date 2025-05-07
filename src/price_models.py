@@ -9,6 +9,8 @@ Felix G. Baquedano. FAO, Rome, 2015.
 import numpy as np
 import pandas as pd
 
+
+
 def compute_cgr(series, window):
     r"""
     Compute the compound growth rate (CGR) over a rolling window.
@@ -19,20 +21,25 @@ def compute_cgr(series, window):
     raised to the power of one over the length of
     the period of time being considered, as highlighted in Equation 1:
     
-    CGR_t = \left(\frac{P_{t_n}}{P_{t_0}}\right)^{\frac{1}{t_n-t_0}} - 1
-    
+    CGR_t = (P_tn / P_t0) ** (1 / (t_n - t_0)) - 1
+           = (P_last / P_first) ** (1 / (window - 1)) - 1
+
     Parameters:
       series (pd.Series): Time series of prices.
       window (int): Number of periods (months) to consider.
       
     Returns:
       pd.Series: The rolling CGR with NaN for periods with insufficient data.
-        to do -- handling zeros or near-zeros (returns NaN if x[0] == 0).
-
     """
-    return series.rolling(window).apply(
-        lambda x: np.nan if x[0] == 0 else (x[-1] / x[0])**(1/window) - 1, raw=True
-    )
+    def _cgr(x):
+        periods = len(x) - 1          # elapsed months
+        if periods <= 0 or x[0] == 0:
+            return np.nan
+        return (x[-1] / x[0]) ** (1 / periods) - 1
+
+    return series.rolling(window).apply(_cgr, raw=True)
+
+
 
 def compute_volatility(series, window):
     r"""
@@ -51,32 +58,24 @@ def compute_volatility(series, window):
     """
     log_series = np.log(series)
     log_diff = log_series.diff()
-    return log_diff.rolling(window).std()
+    return log_diff.rolling(window - 1).std()
 
 
-def adjust_cgr_for_volatility(cgr_series, vol_series):
+def adjust_cgr_for_volatility(cgr_series, vol_series, *, clip=False):
     r"""
-    Adjust the compound growth rate (CGR) for volatility.
+    Deflate the CGR by (1 - σ).
 
-    Baquedano (2015):
-    "By reducing the slope of the compound growth rate,
-    the deviations with respect to the average of
-    the compound growth rate at month $t$, will be smaller ...
-    we deflate the CGR by its respective measure,
-    as shown in Equation 3:
-    
-    vCGR_t = CGR_t \times (1 - \sigma_{[P_{t_0}-P_{t_n}]} )
-    
-    Parameters:
-      cgr_series (pd.Series): Rolling CGR.
-      vol_series (pd.Series): Corresponding rolling volatility.
-      
-    Returns:
-      pd.Series: The volatility-adjusted CGR (vCGR).
+    Parameters
+    ----------
+    cgr_series : pd.Series
+    vol_series : pd.Series   # rolling std of log-diffs, ≥0
+    clip       : bool        # if True, cap σ at 1 so (1-σ) never flips sign
     """
-    # ensure volatility is within [0, 1]
-    if (vol_series < 0).any() or (vol_series > 1).any():
-        raise ValueError("volatility values must be between 0 and 1")
+    if (vol_series < 0).any():
+        raise ValueError("volatility (std) can’t be negative")
+
+    if clip:
+        vol_series = vol_series.clip(upper=1.0)
 
     return cgr_series * (1 - vol_series)
 
@@ -250,7 +249,6 @@ def handle_missing_data(series, method='interpolate', **kwargs):
       - 'bfill': Backward fill.
       - 'drop': (can lead to misaligned series).
 
-    Additional keyword arguments are passed to the underlying pandas function.
     """
     if method == 'interpolate':
         # Time-based interpolation is recommended when the index is datetime.

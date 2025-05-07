@@ -18,7 +18,7 @@
 
 - 2018 Guidance document, [Integrating Acute Malnutrition and Mortality into Scenario Development](https://fews.net/global/guidance-documents/january-2018-0)
 
-- 2021 Guidance document,[Matrix Analysis: Integrated Analysis of Survey-Based Indicators for Classification of Acute Food Insecurity](https://fews.net/global/guidance-documents/may-2021)
+- 2021 Guidance document, [Matrix Analysis: Integrated Analysis of Survey-Based Indicators for Classification of Acute Food Insecurity](https://fews.net/global/guidance-documents/may-2021)
 
 - book: [Famine early warning systems and remote sensing data](https://link.springer.com/book/10.1007/978-3-540-75369-8). Brown, Molly E. Springer 2008.
 <!-- bibtex=brown2008famine -->
