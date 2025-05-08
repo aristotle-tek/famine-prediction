@@ -99,46 +99,6 @@ def weighted_mean(values, weights):
     return np.sum(values * weights) / np.sum(weights)
 
 
-def weighted_std(values, weights):
-    """
-    Compute the weighted standard deviation of values
-    as in Baquedano (2015) Equation (5).
-
-    Equation (5):
-    σ̂_{vCGR,Wt} = sqrt(
-        (Σ wₐ [vCGRᵧt −  vCGR̅_{Wt}]²) / 
-        (Σ wᵧ × ((γ−1)/γ))
-    )
-
-    where γ is the number of observations.
-    """
-    mean_val = weighted_mean(values, weights)
-    gamma = len(values)  # number of data points
-    numerator = np.sum(weights * (values - mean_val)**2)
-    denominator = np.sum(weights) * ((gamma - 1) / gamma)
-    return np.sqrt(numerator / denominator)
-
-
-def compute_anomaly_score(vcgr, w_mean, w_std):
-    r"""
-    Compute the anomaly score for a volatility-adjusted CGR (vCGR).
-
-    Baquedano (2015) Equation (6), the anomaly score is defined as:
-
-    IPA_t^Z = \frac{vCGR_t - \overline{vCGR}_{Wt}}{\sigma_{vCGR,Wt}}
-    
-    This represents the number of weighted standard deviations
-    that the current vCGR deviates from its weighted mean.
-    
-    Parameters:
-      vcgr (float): The current volatility-adjusted CGR.
-      w_mean (float): The weighted mean of vCGR values.
-      w_std (float): The weighted standard deviation of vCGR values.
-      
-    Returns:
-      float: The anomaly score.
-    """
-    return (vcgr - w_mean) / w_std
 
 def classify_anomaly(score):
     r"""
@@ -156,21 +116,20 @@ def classify_anomaly(score):
     Returns:
       str: The classification ("Price Alert", "Price Watch", or "Normal").
     """
+    if pd.isna(score):
+        return "Insufficient data"
     if score >= 1:
         return "Price Alert"
-    if score >= 0.5:
+    if score >= 0.5:  # This implies score < 1 due to the check above
         return "Price Watch"
     return "Normal"
+
+
 
 def compute_gamma(vcqgr_series, vcagr_series):
     r"""
     Compute the weight γ, determining the relative importance of the
     quarterly and annual signals via PCA on their covariance matrix.
-
-    Baquedano (2015) notes:
-      "The PCA allows us to calculate the eigenvalues for both of
-       these compound growth rates. The ratio of each eigenvalue to
-       the sum of the variances gives us the value for γ."
 
       1. Drop any NaNs and align the two series.
       2. Build the 2×2 population covariance matrix.
@@ -221,6 +180,71 @@ def compute_gamma(vcqgr_series, vcagr_series):
     gamma = eigs[0] / total
     return float(gamma)
 
+
+def weighted_std(values, weights):
+    """
+    Compute the weighted standard deviation of values
+    as in Baquedano (2015) Equation (5).
+
+    Equation (5):
+    σ̂_{vCGR,Wt} = sqrt(
+        (Σ wᵧ [vCGRᵧt −  vCGR̅_{Wt}]²) / 
+        (Σ wᵧ × ((γ−1)/γ))
+    )
+
+    where γ is the number of observations.
+    """
+    mean_val = weighted_mean(values, weights)
+    gamma = len(values)  # number of data points
+
+    if gamma <= 1: # Std dev not defined for 0 or 1 point, or would be 0.
+        return np.nan # Return NaN to indicate it cannot be reliably calculated.
+
+    numerator = np.sum(weights * (values - mean_val)**2)
+
+    # Denominator factor related to effective sample size and bias correction
+    # Ensure sum_weights is not zero if gamma > 1 (should not happen with positive weights)
+    sum_weights = np.sum(weights)
+    if sum_weights == 0:
+        return np.nan # Avoid division by zero if somehow sum of weights is zero
+
+    denominator_factor = (gamma - 1) / gamma
+    denominator = sum_weights * denominator_factor
+
+    if denominator == 0: # Could happen if gamma=1 (already handled) or sum_weights is zero.
+        return np.nan
+
+    return np.sqrt(numerator / denominator)
+
+
+def compute_anomaly_score(vcgr_value, weighted_mean_for_month, weighted_std_for_month):
+    r"""
+    Compute the anomaly score (X_IPA_t^Z) as per Baquedano (2015) Equation (6).
+
+    Equation (6):
+    X_IPA_t^Z = (vCGR_t - \overline{vCGR}_{Wt}) / \hat{\sigma}_{vCGR,Wt}
+
+    Parameters:
+    vcgr_value (float):
+        The volatility adjusted CGR for the current month t.
+    weighted_mean_for_month (float):
+        The historical weighted average of vCGR for month t across years.
+    weighted_std_for_month (float):
+        The historical weighted standard deviation of vCGR for month t across years.
+
+    Returns:
+    float
+        The anomaly score. Returns np.nan if standard deviation is zero/NaN,
+        or if any input is NaN.
+    """
+    if pd.isna(weighted_std_for_month) or weighted_std_for_month == 0:
+        return np.nan
+    if pd.isna(vcgr_value) or pd.isna(weighted_mean_for_month):
+        return np.nan
+    return (vcgr_value - weighted_mean_for_month) / weighted_std_for_month
+
+
+
 def combine_signals(ipa_quarterly, ipa_annual, gamma):
     r"""
     Combine the quarterly and annual anomaly scores into a final indicator.
@@ -238,6 +262,7 @@ def combine_signals(ipa_quarterly, ipa_annual, gamma):
       float: The combined anomaly indicator.
     """
     return gamma * ipa_quarterly + (1 - gamma) * ipa_annual
+
 
 def handle_missing_data(series, method='interpolate', **kwargs):
     """
