@@ -17,19 +17,19 @@ from src.model_utils import (
 )
 
 
-
-@ pytest.mark.parametrize("intake,bmi,expected_cat", [
-    (2000, 14.0, "BMI < 15 kg/m²"),
-    (2000, 16.0, "15 ≤ BMI < 18.5 kg/m²"),
-    (2000, 20.0, "BMI ≥ 18.5 kg/m²"),
+@pytest.mark.parametrize("bmi, req_key", [
+    (14.9, "BMI < 15 kg/m²"),
+    (15.0, "15 ≤ BMI < 18.5 kg/m²"),
+    (18.49, "15 ≤ BMI < 18.5 kg/m²"),
+    (18.5, "BMI ≥ 18.5 kg/m²"),
 ])
-def test_calculate_energy_deficit_category(intake, bmi, expected_cat):
+def test_category_selection_only(bmi, req_key):
     """compute raw deficit and verify correct category uses its requirement"""
-    req = energy_requirements[expected_cat]
-    deficit = calculate_energy_deficit(intake, bmi, energy_requirements, grain_fraction=0.5)
-    # deficit = (req - intake/0.5) / req, capped at 1
-    expected = min((req - intake/0.5) / req, 1.0)
-    assert pytest.approx(deficit, rel=1e-6) == expected
+    deficit = calculate_energy_deficit(1, bmi, energy_requirements, grain_fraction=1)
+    # Check that the *same* requirement the prod code would pick is used.
+    used_req = next(k for k, v in energy_requirements.items()
+                    if math.isclose(deficit, (v - 1) / v, rel_tol=1e-9))
+    assert used_req == req_key
 
 
 def test_calculate_energy_deficit_invalid():
@@ -42,6 +42,12 @@ def test_calculate_energy_deficit_invalid():
         calculate_energy_deficit(1000, 31, energy_requirements)
 
 
+@pytest.mark.parametrize("bad_fraction", [-0.1, 0, 1.2, "foo"])
+def test_bad_grain_fraction(bad_fraction):
+    with pytest.raises(ValueError):
+        calculate_energy_deficit(1000, 20, energy_requirements, grain_fraction=bad_fraction)
+
+
 def test_update_bmi_effects_and_signs():
     """Energy deficit should reduce BMI"""
     bmi_down = update_bmi(0.1, 22.0)
@@ -52,10 +58,20 @@ def test_update_bmi_effects_and_signs():
 
 
 def test_update_bmi_invalid_factors():
-    """ trivial """
+    """ Direction check """
     bad = BMIFactors(factor_deficit=0, recovery_factor=-1)
     with pytest.raises(ValueError):
         update_bmi(0.1, 20.0, factors=bad)
+
+
+def test_update_bmi_exact():
+    """Add numerical oracle using the public BMIFactors   """ 
+    factors = BMIFactors()
+    deficit = 0.2
+    prev = 21
+    expected = prev - ((factors.factor_adj * deficit)
+                       - factors.factor_deficit * (22 - prev))
+    assert update_bmi(deficit, prev) == pytest.approx(expected)
 
 
 def test_calculate_excess_mortality_formula():
@@ -82,14 +98,16 @@ def test_bmi_distribution_range(method, params, check):
     assert check(arr)
 
 
-def test_bmi_distribution_reference_file(tmp_path):
-    """ test load from file"""
-    df = pd.DataFrame({"data": ["bmi_init"]} | {str(i): [i] for i in range(1, 101)})
-    file = tmp_path / "ref.xlsx"
-    with pd.ExcelWriter(file) as w:
-        df.to_excel(w, sheet_name="energy_intake_dist", index=False)
-    arr = BMIDistribution(method='reference', data_file=str(file)).get_bmi_distribution()
-    assert arr[0] == 100 and arr[-1] == 1
+
+def test_reference_loader_roundtrip(tmp_path):
+    """Validates Excel-loading path"""
+    dummy = np.arange(1, 101)
+    df = pd.DataFrame({"data": ["bmi_init"], **{str(i): [v] for i, v in enumerate(dummy, 1)}})
+    f = tmp_path / "ref.xlsx"
+    with pd.ExcelWriter(f) as w: df.to_excel(w, sheet_name="energy_intake_dist", index=False)
+    loaded = BMIDistribution(method="reference", data_file=f).get_bmi_distribution()
+    assert np.array_equal(loaded[::-1], dummy)
+
 
 
 def test_calorie_distributor_linear_distribution_sum_and_monotonic():
@@ -103,6 +121,7 @@ def test_calorie_distributor_linear_distribution_sum_and_monotonic():
     assert np.all(np.diff(y) >= -1e-6)
 
 
+
 def test_calorie_distributor_piecewise_behavior():
     """monotonically non-decreasing """
     pop = np.ones(100)
@@ -113,4 +132,7 @@ def test_calorie_distributor_piecewise_behavior():
     # before c, should be strictly increasing
     assert np.all(np.diff(y[:50]) > 0)
     # after c, flat
-    assert np.allclose(y[50:], y[50])
+    c = 50
+    assert np.allclose(y[c:], y[c])
+    assert y[:c].max() <= y[c]           # strict plateau
+
