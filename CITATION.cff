@@ -1,0 +1,17 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it using the following metadata."
+title: "Famine Prediction Open Source Models"
+version: "1.0.0"
+doi: "10.5281/zenodo.15366709"
+date-released: 2025-05-08
+authors:
+  - name: Andrew J. Peterson
+    orcid: https://orcid.org/0000-0002-0811-3515
+    affiliation: University of Poitiers
+license: MIT
+repository-code: https://github.com/aristotle-tek/famine-prediction
+keywords:
+  - famine
+  - prediction
+  - food security
+  - data science

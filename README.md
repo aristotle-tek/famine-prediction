@@ -2,6 +2,7 @@
 
 ![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)
 ![Python: 3.x](https://img.shields.io/badge/Python-3.x-blue)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.15366709.svg)](https://doi.org/10.5281/zenodo.15366709)
 
 An open-source repository for modeling famine.
 
